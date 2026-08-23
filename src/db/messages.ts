@@ -214,6 +214,7 @@ export async function listMessagesByNamespaceInRange(
     startCreatedAt: string;
     endCreatedAt: string;
     afterCreatedAt?: string | null;
+    order?: "asc" | "desc";
     limit: number;
   }
 ): Promise<MessageRecord[]> {
@@ -230,7 +231,8 @@ export async function listMessagesByNamespaceInRange(
     binds.push(input.afterCreatedAt);
   }
 
-  sql += ` ORDER BY created_at ASC LIMIT ?`;
+  const order = input.order === "desc" ? "DESC" : "ASC";
+  sql += ` ORDER BY created_at ${order} LIMIT ?`;
   binds.push(input.limit);
 
   const result = await db.prepare(sql).bind(...binds).all<MessageRecord>();

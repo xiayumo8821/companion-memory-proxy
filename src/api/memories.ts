@@ -488,6 +488,7 @@ export async function handleMemoryBoot(request: Request, env: Env): Promise<Resp
       namespace,
       startCreatedAt: start,
       endCreatedAt: end,
+      order: "desc",
       limit: 160
     }),
     countMessagesInRange(env.DB, { namespace, startCreatedAt: start, endCreatedAt: end }),

@@ -345,7 +345,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                   <i data-lucide="heart" class="h-4 w-4"></i>
                 </button>
               </div>
-              <p class="whitespace-pre-wrap text-sm leading-7 text-zinc-100" x-text="message.content"></p>
+              <p class="whitespace-pre-wrap text-sm leading-7 text-zinc-100" x-text="displayMessageContent(message)"></p>
             </article>
           </template>
         </div>
@@ -1139,7 +1139,9 @@ function memoryAdmin() {
         this.boot = data.data || {};
         this.stats = this.boot.stats || {};
 
-        this.todayMessages = this.boot.today_messages || [];
+        this.todayMessages = (this.boot.today_messages || []).slice().sort(function(a, b) {
+          return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+        });
         this.precious = this.boot.precious || [];
         this.glossary = this.boot.glossary || [];
         if (this.moreView === 'world') {
@@ -1149,6 +1151,12 @@ function memoryAdmin() {
       } catch (error) {
         this.notify(error.message);
       }
+    },
+    displayMessageContent(message) {
+      const content = message && typeof message.content === 'string' ? message.content : '';
+      if (!message || message.role !== 'user') return content;
+      const channel = content.match(/^\s*<channel\b[^>]*>([\s\S]*?)<\/channel>\s*$/i);
+      return channel ? channel[1].trim() : content;
     },
     async loadCandidates() {
       try {
