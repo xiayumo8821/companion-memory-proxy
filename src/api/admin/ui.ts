@@ -425,6 +425,9 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
             <button type="button" @click="openMemoryCreate()" class="tap inline-flex items-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out">
               <i data-lucide="plus" class="h-4 w-4"></i><span>新增</span>
             </button>
+            <button type="button" @click="toggleMemorySort()" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">
+              <i data-lucide="arrow-up-down" class="h-4 w-4"></i><span x-text="memorySort === 'newest' ? '排序：最新优先' : '排序：默认'"></span>
+            </button>
             <button type="button" @click="loadMemories()" class="tap rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">刷新</button>
           </div>
         </div>
@@ -437,6 +440,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
             </button>
           </template>
         </div>
+        <p class="text-sm text-zinc-400" x-text="memoryTypeDescription(memoryType)"></p>
 
         <article x-show="memoryCreateOpen" class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between gap-3">
@@ -449,7 +453,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <span class="text-xs text-zinc-400">类型</span>
                 <select x-model="memoryDraft.type" class="mt-1 h-11 w-full rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral">
                   <template x-for="type in memoryTypes" :key="type">
-                    <option x-show="type !== 'all'" :value="type" x-text="type"></option>
+                    <option x-show="type !== 'all'" :value="type" x-text="memoryTypeLabel(type)"></option>
                   </template>
                 </select>
               </label>
@@ -488,7 +492,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
           <template x-for="memory in memories" :key="memory.id">
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
               <div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                <span class="rounded-full bg-coral px-2.5 py-1 font-semibold text-zinc-950" x-text="memory.type"></span>
+                <span class="rounded-full bg-coral px-2.5 py-1 font-semibold text-zinc-950" x-text="memoryTypeLabel(memory.type)"></span>
                 <span x-text="memory.id"></span>
                 <span x-text="pct(memory.confidence)"></span>
               </div>
@@ -1024,6 +1028,7 @@ function memoryAdmin() {
     worldSelection: {},
     worldQuery: '',
     memoryType: 'all',
+    memorySort: 'default',
     memoryCreateOpen: false,
     memoryDraft: { type: 'fact', content: '', fact_key: '', importance: 0.7, confidence: 0.85 },
     glossaryDraft: { term: '', definition: '', aliasesText: '' },
@@ -1177,13 +1182,15 @@ function memoryAdmin() {
         const typeParam = this.memoryType && this.memoryType !== 'all' ? '&type=' + encodeURIComponent(this.memoryType) : '';
         const path = '/v1/memory?status=active&limit=100' + typeParam;
         const data = await this.request(this.withNamespace(path));
-        this.memories = (data.data || []).map(function(item) {
+        this.memories = (data.data || []).map(function(item, index) {
           item.editing = false;
           item.mergeOpen = false;
           item.target_id = '';
           item.draft = { content: item.content };
+          item._adminSourceOrder = index;
           return item;
         });
+        this.applyMemorySort();
       } catch (error) {
         this.notify(error.message);
       }
@@ -1836,7 +1843,50 @@ function memoryAdmin() {
       return ['all'].concat(this.canonicalMemoryTypes);
     },
     memoryTypeLabel(type) {
-      return type === 'all' ? '全部' : type;
+      return {
+        all: '全部',
+        fact: '事实',
+        event: '经历',
+        preference: '偏好',
+        relationship: '关系',
+        boundary: '边界',
+        habit: '习惯',
+        decision: '决策',
+        note: '补充'
+      }[type] || type;
+    },
+    memoryTypeDescription(type) {
+      return {
+        all: '查看全部重要记忆，可使用排序按钮切换显示顺序。',
+        fact: '项目或现实中稳定成立的一条事实。',
+        event: '一段有明确时间边界的经历。',
+        preference: '一条具体、可持续复用的偏好。',
+        relationship: '一条稳定的关系或角色事实。',
+        boundary: '一条需要明确遵守的边界。',
+        habit: '一个长期、重复出现的习惯。',
+        decision: '一个持续有效、需要继续执行的决定。',
+        note: '不适合归入前七类，但仍值得保留的补充。'
+      }[type] || '';
+    },
+    toggleMemorySort() {
+      this.memorySort = this.memorySort === 'newest' ? 'default' : 'newest';
+      this.applyMemorySort();
+      this.icons();
+    },
+    applyMemorySort() {
+      const rows = (this.memories || []).slice();
+      if (this.memorySort === 'newest') {
+        rows.sort(function(a, b) {
+          const aTime = String(a.created_at || a.updated_at || '');
+          const bTime = String(b.created_at || b.updated_at || '');
+          return bTime.localeCompare(aTime) || Number(a._adminSourceOrder || 0) - Number(b._adminSourceOrder || 0);
+        });
+      } else {
+        rows.sort(function(a, b) {
+          return Number(a._adminSourceOrder || 0) - Number(b._adminSourceOrder || 0);
+        });
+      }
+      this.memories = rows;
     },
     typeCount(type) {
       const rows = this.stats.memory_type_counts || [];
