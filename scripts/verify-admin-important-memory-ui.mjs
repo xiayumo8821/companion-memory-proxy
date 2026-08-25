@@ -62,7 +62,14 @@ assert.equal(
 
 assert.match(source, /x-text="memoryTypeLabel\(memory\.type\)"/);
 assert.match(source, /x-text="memoryTypeLabel\(type\)"/);
-assert.match(source, /排序：最新优先/);
-assert.match(source, /排序：默认/);
+assert.match(source, /x-text="memoryTypeLabel\(candidate\.type\)"/);
+assert.match(source, /x-text="memoryTypeLabel\(mem\.type\)"/);
+assert.match(source, /最新优先/);
+assert.match(source, /默认排序/);
+assert.match(source, /L4 · 稳定事实、偏好、边界和决策/);
+assert.match(source, /grid grid-cols-2 gap-2 sm:flex sm:flex-wrap/);
+assert.doesNotMatch(source, /typeCount\(type\) \+ '\/' \+ typeLimit\(type\)/);
+assert.match(source, /处理日期是梦境对应的聊天日期；实际运行是任务启动时间。/);
+assert.match(source, /'实际运行 ' \+ fmt\(run\.started_at\)/);
 
-console.log("ok: Chinese type labels, one-line descriptions, and reversible memory sorting");
+console.log("ok: mobile memory toolbar, Chinese type labels, clear dream time labels, and reversible sorting");

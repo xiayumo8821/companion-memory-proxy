@@ -372,7 +372,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               <template x-if="candidate.source === 'dream_update'">
                 <span class="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-semibold text-zinc-950">更新提案</span>
               </template>
-              <span class="rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-zinc-950" x-text="candidate.type"></span>
+              <span class="rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-zinc-950" x-text="memoryTypeLabel(candidate.type)"></span>
               <span class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="'confidence ' + pct(candidate.confidence)"></span>
               <span class="min-w-0 truncate text-xs text-zinc-400" x-text="candidate.fact_key || 'no fact_key'"></span>
             </div>
@@ -388,7 +388,11 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               <div class="space-y-3">
                 <textarea x-model="candidate.draft.content" class="min-h-32 w-full resize-y rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3 text-sm outline-none focus:border-coral"></textarea>
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <input x-model="candidate.draft.type" class="h-11 rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral" placeholder="type">
+                  <select x-model="candidate.draft.type" class="h-11 rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral">
+                    <template x-for="type in canonicalMemoryTypes" :key="type">
+                      <option :value="type" x-text="memoryTypeLabel(type)"></option>
+                    </template>
+                  </select>
                   <input x-model="candidate.draft.fact_key" class="h-11 rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral" placeholder="fact_key">
                 </div>
               </div>
@@ -416,27 +420,26 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
       </section>
 
       <section x-show="page === 'memory'" class="space-y-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0 flex-1">
+        <div class="space-y-3">
+          <div>
             <h1 class="text-2xl font-semibold">重要记忆</h1>
-            <p class="mt-1 text-sm text-zinc-400">L4 稳定事实、偏好、边界和决策。</p>
+            <p class="mt-1 text-sm text-zinc-400">L4 · 稳定事实、偏好、边界和决策</p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" @click="openMemoryCreate()" class="tap inline-flex items-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out">
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <button type="button" @click="openMemoryCreate()" class="tap inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out sm:w-auto">
               <i data-lucide="plus" class="h-4 w-4"></i><span>新增</span>
             </button>
-            <button type="button" @click="toggleMemorySort()" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">
-              <i data-lucide="arrow-up-down" class="h-4 w-4"></i><span x-text="memorySort === 'newest' ? '排序：最新优先' : '排序：默认'"></span>
+            <button type="button" @click="toggleMemorySort()" class="tap inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral sm:w-auto">
+              <span x-text="memorySort === 'newest' ? '最新优先' : '默认排序'"></span><i data-lucide="chevron-down" class="h-4 w-4"></i>
             </button>
-            <button type="button" @click="loadMemories()" class="tap rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">刷新</button>
           </div>
         </div>
 
         <div class="flex gap-2 overflow-x-auto pb-1">
           <template x-for="type in memoryTypes" :key="type">
-            <button type="button" @click="memoryType = type; loadMemories()" class="choice-tab tap shrink-0 rounded-2xl border px-4 text-sm transition duration-150 ease-in-out hover:border-coral" :class="memoryType === type ? 'is-active' : ''">
+            <button type="button" @click="memoryType = type; loadMemories()" class="choice-tab tap inline-flex shrink-0 items-center gap-1 rounded-2xl border px-3 text-sm transition duration-150 ease-in-out hover:border-coral" :class="memoryType === type ? 'is-active' : ''">
               <span x-text="memoryTypeLabel(type)"></span>
-              <span class="ml-1 text-xs" x-text="typeCount(type) + '/' + typeLimit(type)"></span>
+              <span class="text-xs" x-text="typeCount(type)"></span>
             </button>
           </template>
         </div>
@@ -773,7 +776,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                     <template x-for="(mem, idx) in dreamExtracted()" :key="idx">
                       <div class="rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
                         <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-                          <span class="rounded-full bg-coral px-2 py-0.5 font-semibold text-zinc-950" x-text="mem.type"></span>
+                          <span class="rounded-full bg-coral px-2 py-0.5 font-semibold text-zinc-950" x-text="memoryTypeLabel(mem.type)"></span>
                           <span class="text-zinc-400" x-text="'重要性 ' + pct(mem.importance)"></span>
                           <span class="min-w-0 truncate text-zinc-500" x-text="mem.fact_key || ''"></span>
                         </div>
@@ -814,7 +817,10 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <h2 class="text-base font-semibold">运行时间线</h2>
+            <div>
+              <h2 class="text-base font-semibold">运行时间线</h2>
+              <p class="mt-1 text-xs text-zinc-400">处理日期是梦境对应的聊天日期；实际运行是任务启动时间。</p>
+            </div>
             <span class="text-xs text-zinc-400" x-text="dreamRuns.length + ' 次'"></span>
           </div>
           <template x-if="dreamRuns.length === 0">
@@ -825,6 +831,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               <article class="dream-rail-item" :class="dreamRailClass(run.status)">
                 <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
                   <div class="mb-2 flex flex-wrap items-center gap-2">
+                    <span class="text-xs text-zinc-400">处理日期</span>
                     <span class="text-sm font-semibold text-zinc-100" x-text="run.date_label"></span>
                     <span class="chip" :class="dreamStatusChipClass(run.status)">
                       <span x-show="run.status === 'running'" class="breathe inline-block h-1.5 w-1.5 rounded-full bg-current"></span>
@@ -836,7 +843,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
                     <span class="min-w-0 truncate" x-text="run.model || '模型未知'"></span>
                     <span x-text="'消息 ' + (run.processed_messages == null ? '—' : run.processed_messages)"></span>
-                    <span x-text="fmt(run.started_at)"></span>
+                    <span x-text="'实际运行 ' + fmt(run.started_at)"></span>
                   </div>
                   <template x-if="dreamRunNote(run)">
                     <div class="mt-2">
@@ -879,7 +886,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <template x-for="item in dreamHarvestCreated()" :key="item.id">
                   <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
                     <div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
-                      <span class="rounded-full bg-coral px-2 py-0.5 font-semibold text-zinc-950" x-text="item.type"></span>
+                      <span class="rounded-full bg-coral px-2 py-0.5 font-semibold text-zinc-950" x-text="memoryTypeLabel(item.type)"></span>
                       <span class="text-zinc-400" x-text="pct(item.importance)"></span>
                       <span x-show="item.status !== 'active'" class="chip chip-dim" x-text="item.status"></span>
                     </div>
@@ -904,7 +911,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                   <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-3 opacity-80">
                     <div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
                       <span class="chip chip-dim" x-text="dreamDormantLabel(item.status)"></span>
-                      <span class="text-zinc-500" x-text="item.type"></span>
+                      <span class="text-zinc-500" x-text="memoryTypeLabel(item.type)"></span>
                       <span class="text-zinc-500" x-text="fmt(item.updated_at)"></span>
                     </div>
                     <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-400" x-text="item.content"></p>
@@ -930,7 +937,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                     <div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
                       <span class="chip" :class="item.status === 'approved' ? 'chip-ok' : 'chip-dim'" x-text="dreamCandidateStatusLabel(item.status)"></span>
                       <span class="chip chip-dim" x-text="dreamCandidateSourceLabel(item.source)"></span>
-                      <span class="text-zinc-500" x-text="item.type"></span>
+                      <span class="text-zinc-500" x-text="memoryTypeLabel(item.type)"></span>
                     </div>
                     <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-200" x-text="item.content"></p>
                     <p x-show="item.decision_note" class="mt-1 text-[11px] leading-5 text-zinc-500" x-text="item.decision_note"></p>
