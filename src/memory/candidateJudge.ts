@@ -72,7 +72,7 @@ function parseJsonArray(raw: string | null): string[] {
 function formatTranscript(messages: MessageRecord[]): string {
   return messages
     .map((message) => {
-      const role = message.role === "assistant" ? "我(助手)" : "用户";
+      const role = message.role === "assistant" ? "我（以昼）" : "她（茉茉）";
       return `[${message.id}][${message.created_at}][${role}] ${message.content.trim().slice(0, 900)}`;
     })
     .join("\n\n");
@@ -94,7 +94,7 @@ function buildJudgePrompt(candidate: MemoryCandidateRow, messages: MessageRecord
     "证据越扎实、越稳定、越非平凡，score 越高；grounded / durable 必须是布尔值；reason 是一句话说明理由。",
     "",
     "输出格式：",
-    JSON.stringify({ score: 0.9, grounded: true, durable: true, reason: "对话里用户明确说过这件事，且是长期稳定的事实。" }),
+    JSON.stringify({ score: 0.9, grounded: true, durable: true, reason: "对话里她明确说过这件事，且是长期稳定的事实。" }),
     "",
     "待审候选：",
     JSON.stringify({

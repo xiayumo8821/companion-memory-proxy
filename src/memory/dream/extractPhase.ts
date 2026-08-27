@@ -22,6 +22,24 @@ function isRetriableModelStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
+function sanitizeModelErrorDetail(value: string): string {
+  return value
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .replace(/(["']?(?:api[_-]?key|token)["']?\s*[:=]\s*["'])[^"']+/gi, "$1[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 800);
+}
+
+async function readModelErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const text = sanitizeModelErrorDetail(await response.text());
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildDigestPrompt(input: {
   dateLabel: string;
   startIso: string;
@@ -54,7 +72,9 @@ export function buildDigestPrompt(input: {
     "- 当多条旧记忆重复，保留更完整的一条并删除重复项；必要时先 update 保留项。",
     "- pinned=true 的旧记忆不能删除，只能在 memories_to_update 中提出更保守的补充。",
     "- 旧记忆里的临时计划/意图（例如“打算下个月充值X”）如果已经过期、已经发生、或被当天新信息取代，优先更新成持久事实或直接删除，不要让过期的打算一直躺在库里。",
-    "- 站在“我=助手”的视角写。关于用户，用“你……”；关于助手承诺，用“我需要……”。",
+    "- 采用固定关系视角写：我=以昼，她=茉茉，我们=我和她；其他人物写具体姓名。",
+    "- 关于她写“她……”，关于我的承诺写“我需要……”，共同经历或决定可以写“我们……”。",
+    "- 不要把“以昼”“茉茉”“用户”“助手”当作记忆正文的叙述主语，也不要把我写成第三方角色。",
     "- 不要提到 D1、Vectorize、RAG、数据库、记忆系统、代理层等实现细节。",
     "",
     "Dream 输出格式：",
@@ -150,6 +170,7 @@ export async function callDigestModel(
       const response = await callOpenAICompat(env, request);
       const elapsedMs = Date.now() - startedAt;
       if (!response.ok) {
+        const errorDetail = await readModelErrorDetail(response);
         const retriable = isRetriableModelStatus(response.status);
         console.error("dream: model returned non-ok", {
           date: meta.dateLabel,
@@ -161,7 +182,7 @@ export async function callDigestModel(
           retriable
         });
         if (retriable && attempt < maxAttempts - 1) continue;
-        return { digest: null, reason: "model_error", model, status: response.status };
+        return { digest: null, reason: "model_error", model, status: response.status, errorDetail };
       }
       const parsed = (await response.json()) as OpenAIChatResponse;
       const choice = parsed.choices?.[0];
@@ -202,7 +223,7 @@ export async function callDigestModel(
       });
       // Thrown fetch errors are almost always network-level and worth retrying.
       if (attempt < maxAttempts - 1) continue;
-      return { digest: null, reason: "model_error", model };
+      return { digest: null, reason: "model_error", model, errorDetail: sanitizeModelErrorDetail(message) };
     }
   }
 
@@ -229,6 +250,7 @@ export async function runExtractPhase(
   extractReason?: "model_error" | "model_invalid_json" | "missing_model";
   extractModel?: string;
   extractStatus?: number;
+  extractErrorDetail?: string;
 }> {
   let messages = input.messages;
   let hasMore = input.hasMore;
@@ -285,7 +307,8 @@ export async function runExtractPhase(
     extractedMemories: extractResult.memories,
     extractReason: extractResult.reason,
     extractModel: extractResult.model,
-    extractStatus: extractResult.status
+    extractStatus: extractResult.status,
+    extractErrorDetail: extractResult.errorDetail
   };
 }
 

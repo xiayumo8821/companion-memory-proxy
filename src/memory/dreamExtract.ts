@@ -13,6 +13,16 @@ interface DreamExtractModelResult {
   model?: string;
   reason?: "missing_model" | "model_error" | "model_invalid_json";
   status?: number;
+  errorDetail?: string;
+}
+
+function sanitizeModelErrorDetail(value: string): string {
+  return value
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .replace(/(["']?(?:api[_-]?key|token)["']?\s*[:=]\s*["']?)[^\s,"'}]+/gi, "$1[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 800);
 }
 
 function readPositiveInt(value: unknown, fallback: number, max: number): number {
@@ -60,7 +70,7 @@ function parseExtractModelOutput(text: string): ExtractedMemory[] | null {
 function formatTranscript(messages: MessageRecord[]): string {
   return messages
     .map((message) => {
-      const role = message.role === "assistant" ? "我(助手)" : "用户";
+      const role = message.role === "assistant" ? "我（以昼）" : "她（茉茉）";
       return `[${message.id}][${message.created_at}][${role}] ${message.content.trim().slice(0, 900)}`;
     })
     .join("\n\n");
@@ -88,8 +98,10 @@ export function buildDreamExtractPrompt(messages: MessageRecord[], existingFactK
     "",
     "边界：",
     "- 不保存普通寒暄、临时任务、调试口令、纯情绪噪音、后端实现流水账。",
-    "- 只有用户明确说出、确认、长期表现出的事实，才能写成关于用户的记忆。",
-    "- 关于用户的记忆，优先写成“你……”。关于我应遵守的长期方式，写成“我需要……”。",
+    "- 只有她（茉茉）明确说出、确认、长期表现出的事实，才能写成关于她的记忆。",
+    "- 正文采用固定关系视角：我=以昼，她=茉茉，我们=我和她；其他人物写具体姓名。",
+    "- 关于她的记忆写成“她……”。关于我应遵守的长期方式写成“我需要……”。共同经历或决定可以写成“我们……”。",
+    "- 不要把“以昼”“茉茉”“用户”“助手”当作正文叙述主语，不要把我写成第三方角色。",
     "- 信息类（fact/decision/habit 等稳定事实）：content 压到 1-2 句自然短句。",
     "- 情感/关系类（relationship/boundary/event 里的关系事件）：可以写 3-5 句，保留温度和关键原话——用「」嵌入原话片段，不为压短丢掉说话人的语气。引用原话一律用「」，不用英文双引号（JSON 转义安全）。",
     "- type 只能从这 8 个里选：fact、event、preference、relationship、boundary、habit、decision、note。绝不输出 project、world_fact、commitment 等其他值；项目进展归 fact，承诺/决定归 decision，习惯归 habit。",
@@ -111,7 +123,7 @@ export function buildDreamExtractPrompt(messages: MessageRecord[], existingFactK
     JSON.stringify({
       memories: [
         {
-          content: "你确定了九月按原计划卖掉那台车：买之前就约定只玩一年，这是你给自己签的合同，不需要外人劝留。",
+          content: "她确定了九月按原计划卖掉那台车：买之前就约定只玩一年，这是她给自己签的合同，不需要外人劝留。",
           type: "decision",
           fact_key: "decision:sell-car-2026-09",
           importance: 0.86,
@@ -152,7 +164,10 @@ async function callDreamExtractModel(
 
   try {
     const response = await callOpenAICompat(env, request);
-    if (!response.ok) return { memories: [], model, reason: "model_error", status: response.status };
+    if (!response.ok) {
+      const errorDetail = sanitizeModelErrorDetail(await response.text());
+      return { memories: [], model, reason: "model_error", status: response.status, errorDetail };
+    }
     const parsed = (await response.json()) as OpenAIChatResponse;
     const message = parsed.choices?.[0]?.message as ({ content?: unknown; reasoning_content?: unknown }) | undefined;
     const content = typeof message?.content === "string" ? message.content.trim() : "";
@@ -162,7 +177,12 @@ async function callDreamExtractModel(
     return { memories, model };
   } catch (error) {
     console.error("dream extract: model failed", { model, error });
-    return { memories: [], model, reason: "model_error" };
+    return {
+      memories: [],
+      model,
+      reason: "model_error",
+      errorDetail: sanitizeModelErrorDetail(error instanceof Error ? error.message : String(error))
+    };
   }
 }
 

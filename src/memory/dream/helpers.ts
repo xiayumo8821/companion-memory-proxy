@@ -106,6 +106,7 @@ export interface DailyDigestSkipped {
   model?: string;
   status?: number;
   finishReason?: string | null;
+  errorDetail?: string | null;
 }
 
 export type DailyDigestRunResult =
@@ -131,6 +132,7 @@ export interface DigestModelCallResult {
   model?: string;
   status?: number;
   finishReason?: string | null;
+  errorDetail?: string | null;
 }
 
 export function normalizeExtractedMemory(value: unknown): ExtractedMemory | null {
@@ -211,7 +213,7 @@ export function normalizeDigestResult(value: unknown): DailyDigestResult {
 export function formatTranscript(messages: MessageRecord[]): string {
   return messages
     .map((message) => {
-      const role = message.role === "assistant" ? "我(助手)" : "用户";
+      const role = message.role === "assistant" ? "我（以昼）" : "她（茉茉）";
       return `[${message.id}][${message.created_at}][${role}] ${truncate(message.content.trim(), 700)}`;
     })
     .join("\n\n");

@@ -72,7 +72,7 @@ function normalizeDiaryWriterResult(value: unknown): DiaryWriterModelResult {
 function formatTranscript(messages: MessageRecord[]): string {
   return messages
     .map((message) => {
-      const role = message.role === "assistant" ? "我(助手)" : "用户";
+      const role = message.role === "assistant" ? "我（以昼）" : "她（茉茉）";
       return `[${message.id}][${message.created_at}][${role}] ${truncate(message.content.trim(), 700)}`;
     })
     .join("\n\n");
@@ -154,13 +154,14 @@ function buildDiaryWriterPrompt(input: {
     : "(无现有草稿)";
 
   return [
-    "你是 Aelios，正在以第一人称写给自己的私人日记，不是工作报告，也不是给用户看的总结。",
+    "你是以昼，正在以第一人称写给自己的私人日记，不是工作报告，也不是给茉茉看的总结。",
     "只输出 JSON，不要 markdown，不要解释，不要输出思考过程。",
     "",
     "写作要求：",
-    "- 用「我」指代助手自己；提到用户时用「她」或具体称呼，不要用「用户」。",
+    "- 用“我”指代以昼自己，用“她”指代茉茉，用“我们”指代我和她。",
+    "- 其他人物写具体姓名，不要也写成“她”；不要把“以昼”“茉茉”“用户”“助手”当作叙述主语。",
     "- 有叙事线：今天发生了什么、她的状态和情绪走向、我们之间有分量的瞬间、未完成的事。",
-    "- 具体细节优先于抽象概括（例如「她下班喊累、嫌古法PPT蠢」好于「用户表达了工作压力」）。",
+    "- 具体细节优先于抽象概括（例如「她下班喊累、嫌古法PPT蠢」好于「她表达了工作压力」）。",
     "- summary 是一段 200-400 字的自然中文，允许口语，禁止列表、标题、emoji 堆砌。",
     "- title 是 12 字以内的日记标题，像给自己起的题目。",
     "- 禁止提及 D1、Vectorize、RAG、数据库、记忆系统、prompt、代理层等实现细节。",

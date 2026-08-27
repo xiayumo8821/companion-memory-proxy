@@ -185,7 +185,9 @@ export async function runDailyMemoryDigest(
       reason: modelResult.reason ?? "model_error",
       model: modelResult.model,
       processedMessages: messages.length,
-      error: modelResult.finishReason
+      error: modelResult.errorDetail
+        ? (modelResult.status ? `status=${modelResult.status} · ${modelResult.errorDetail}` : modelResult.errorDetail)
+        : modelResult.finishReason
         ? `finish_reason=${modelResult.finishReason}`
         : modelResult.status
           ? `status=${modelResult.status}`
@@ -202,7 +204,8 @@ export async function runDailyMemoryDigest(
       processedMessages: messages.length,
       model: modelResult.model,
       status: modelResult.status,
-      finishReason: modelResult.finishReason
+      finishReason: modelResult.finishReason,
+      errorDetail: modelResult.errorDetail
     };
   }
 
@@ -219,9 +222,13 @@ export async function runDailyMemoryDigest(
       reason: "extract_model_error",
       model: extractPhase.extractModel ?? modelResult.model,
       processedMessages: messages.length,
-      error: extractPhase.extractStatus
-        ? `status=${extractPhase.extractStatus}`
-        : "model_error"
+      error: extractPhase.extractErrorDetail
+        ? (extractPhase.extractStatus
+          ? `status=${extractPhase.extractStatus} · ${extractPhase.extractErrorDetail}`
+          : extractPhase.extractErrorDetail)
+        : extractPhase.extractStatus
+          ? `status=${extractPhase.extractStatus}`
+          : "model_error"
     });
     return {
       ran: false,
@@ -233,7 +240,8 @@ export async function runDailyMemoryDigest(
       cursor,
       processedMessages: messages.length,
       model: extractPhase.extractModel ?? modelResult.model,
-      status: extractPhase.extractStatus
+      status: extractPhase.extractStatus,
+      errorDetail: extractPhase.extractErrorDetail
     };
   }
 
@@ -452,4 +460,3 @@ export async function runDailyMemoryDigest(
     }
   };
 }
-

@@ -138,6 +138,11 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
     -webkit-backdrop-filter: blur(14px);
     box-shadow: var(--panel-glow) !important;
   }
+  .bg-zinc-900\/60 {
+    background-color: var(--panel-bg) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
   .bg-zinc-900\/90, .bg-zinc-900\/95 {
     background-color: var(--panel-bg-strong) !important;
     backdrop-filter: blur(14px);
@@ -373,13 +378,29 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <span class="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-semibold text-zinc-950">更新提案</span>
               </template>
               <span class="rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-zinc-950" x-text="memoryTypeLabel(candidate.type)"></span>
+              <span class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="candidateSourceLabel(candidate.source)"></span>
               <span class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="'confidence ' + pct(candidate.confidence)"></span>
-              <span class="min-w-0 truncate text-xs text-zinc-400" x-text="candidate.fact_key || 'no fact_key'"></span>
+              <span class="min-w-0 truncate text-xs text-zinc-400" x-text="candidate.fact_key || '无固定键'"></span>
             </div>
             <template x-if="candidate.source === 'dream_delete'">
               <p class="mb-2 text-xs text-red-300/80">
-                通过＝归档这条目标记忆 <span class="font-mono" x-text="candidate.target_memory_id"></span>（原因：<span x-text="candidate.decision_note || '整理'"></span>）。下面内容是被删对象的预览，不是新增。
+                这是系统提出的归档建议。选择“确认归档”才会归档目标记忆；选择“保留原记忆”会拒绝这份提案。
               </p>
+            </template>
+            <template x-if="candidate.source === 'dream_update'">
+              <p class="mb-2 text-xs text-amber-300/80">这是系统写出的新版本。选择“采用新版本”会让它接替下面的原记忆；原版本仍保留在历史链中。</p>
+            </template>
+            <template x-if="candidate.target_memory">
+              <div class="mb-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
+                <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                  <span class="font-semibold text-zinc-200">目标记忆预览</span>
+                  <span class="chip chip-dim" x-text="memorySourceLabel(candidate.target_memory.source)"></span>
+                  <span class="chip chip-warn" x-show="candidate.target_memory.authored_by" x-text="'亲笔保护 · ' + candidate.target_memory.authored_by"></span>
+                  <span class="chip chip-dim" x-show="candidate.target_memory.source === 'mcp' && !candidate.target_memory.authored_by">未加亲笔保护</span>
+                </div>
+                <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="candidate.target_memory.content"></p>
+                <p class="mt-1 text-[11px] text-zinc-500" x-show="candidate.decision_note" x-text="candidate.decision_note"></p>
+              </div>
             </template>
             <template x-if="!candidate.editing">
               <p class="whitespace-pre-wrap text-sm leading-7 text-zinc-100" x-text="candidate.content"></p>
@@ -398,22 +419,34 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               </div>
             </template>
             <div class="mt-4 grid grid-cols-2 gap-3 md:flex md:flex-wrap">
-              <button type="button" @click="approveCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out">
-                <i data-lucide="check" class="h-4 w-4"></i><span>通过</span>
+              <button type="button" @click="approveCandidate(candidate)" :disabled="candidate.source === 'dream_delete' && candidate.target_memory && candidate.target_memory.authored_by" class="tap inline-flex items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out disabled:cursor-not-allowed disabled:opacity-40">
+                <i data-lucide="check" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? (candidate.target_memory && candidate.target_memory.authored_by ? '亲笔保护' : '确认归档') : (candidate.source === 'dream_update' ? '采用新版本' : '通过')"></span>
               </button>
               <button type="button" @click="discardCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral">
-                <i data-lucide="x" class="h-4 w-4"></i><span>丢弃</span>
+                <i data-lucide="x" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? '保留原记忆' : '丢弃提案'"></span>
               </button>
               <button type="button" @click="toggleCandidateEdit(candidate)" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
                 <i data-lucide="pencil" class="h-4 w-4"></i><span x-text="candidate.editing ? '取消编辑' : '编辑后通过'"></span>
               </button>
-              <button type="button" @click="candidate.mergeOpen = !candidate.mergeOpen; icons()" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
+              <button type="button" @click="openCandidateMerge(candidate)" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
                 <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并到已有记忆</span>
               </button>
             </div>
-            <div x-show="candidate.mergeOpen" class="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
-              <input x-model="candidate.target_id" class="h-11 rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral" placeholder="目标 memory id">
-              <button type="button" @click="mergeCandidate(candidate)" class="tap rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">确认合并</button>
+            <div x-show="candidate.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
+              <button type="button" x-show="candidate.target_memory && !candidate.target_memory.authored_by" @click="mergeCandidate(candidate, candidate.target_memory.id)" class="tap w-full rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950">一键合并到系统建议目标</button>
+              <p x-show="candidate.target_memory && candidate.target_memory.authored_by" class="text-xs leading-6 text-amber-300/80">系统建议目标带有亲笔保护，审核队列不会覆盖它。若确实要改，请到“重要记忆”里亲手编辑。</p>
+              <input x-model="candidate.mergeQuery" class="h-11 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-3 text-sm outline-none focus:border-coral" placeholder="搜索记忆正文或类型">
+              <div class="max-h-64 space-y-2 overflow-y-auto">
+                <template x-for="target in candidateMergeOptions(candidate)" :key="target.id">
+                  <button type="button" @click="candidate.target_id = target.id" class="tap w-full rounded-xl border p-3 text-left" :class="candidate.target_id === target.id ? 'border-coral bg-zinc-900' : 'border-zinc-800 bg-zinc-900/60'">
+                    <div class="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                      <span x-text="memoryTypeLabel(target.type)"></span><span x-text="memorySourceLabel(target.source)"></span><span x-show="target.authored_by" class="text-amber-300" x-text="'亲笔保护 · ' + target.authored_by"></span><span x-show="target.source === 'mcp' && !target.authored_by">未加亲笔保护</span>
+                    </div>
+                    <p class="line-clamp-3 text-xs leading-6 text-zinc-300" x-text="target.content"></p>
+                  </button>
+                </template>
+              </div>
+              <button type="button" @click="mergeCandidate(candidate)" :disabled="!candidate.target_id || isProtectedMergeTarget(candidate.target_id)" class="tap w-full rounded-2xl border border-zinc-800 px-4 text-sm transition hover:border-coral disabled:opacity-40">合并到选中的记忆</button>
             </div>
           </article>
         </template>
@@ -496,7 +529,9 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
               <div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
                 <span class="rounded-full bg-coral px-2.5 py-1 font-semibold text-zinc-950" x-text="memoryTypeLabel(memory.type)"></span>
-                <span x-text="memory.id"></span>
+                <span class="chip chip-dim" x-text="memorySourceLabel(memory.source)"></span>
+                <span class="chip chip-warn" x-show="memory.authored_by" x-text="'亲笔保护 · ' + memory.authored_by"></span>
+                <span x-show="memory.source === 'mcp' && !memory.authored_by">未加亲笔保护</span>
                 <span x-text="pct(memory.confidence)"></span>
               </div>
               <template x-if="!memory.editing">
@@ -516,16 +551,24 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <button type="button" x-show="memory.editing" @click="saveMemory(memory)" class="tap inline-flex items-center gap-2 rounded-2xl bg-coral px-3 text-sm font-semibold text-zinc-950">
                   <i data-lucide="save" class="h-4 w-4"></i><span>保存</span>
                 </button>
-                <button type="button" @click="memory.mergeOpen = !memory.mergeOpen; icons()" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm transition duration-150 ease-in-out hover:border-coral">
+                <button type="button" @click="openMemoryMerge(memory)" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm transition duration-150 ease-in-out hover:border-coral">
                   <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并重复</span>
                 </button>
                 <button type="button" @click="deleteMemory(memory)" class="tap ml-auto inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm text-zinc-400 transition duration-150 ease-in-out hover:border-coral hover:text-zinc-100">
                   <i data-lucide="trash-2" class="h-4 w-4"></i><span>删除</span>
                 </button>
               </div>
-              <div x-show="memory.mergeOpen" class="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
-                <input x-model="memory.target_id" class="h-11 rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral" placeholder="目标 memory id">
-                <button type="button" @click="mergeDuplicate(memory)" class="tap rounded-2xl border border-zinc-800 px-4 text-sm transition duration-150 ease-in-out hover:border-coral">合并</button>
+              <div x-show="memory.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
+                <input x-model="memory.mergeQuery" class="h-11 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-3 text-sm outline-none focus:border-coral" placeholder="搜索要保留的目标记忆">
+                <div class="max-h-64 space-y-2 overflow-y-auto">
+                  <template x-for="target in memoryMergeOptions(memory)" :key="target.id">
+                    <button type="button" @click="memory.target_id = target.id" class="tap w-full rounded-xl border p-3 text-left" :class="memory.target_id === target.id ? 'border-coral bg-zinc-900' : 'border-zinc-800 bg-zinc-900/60'">
+                      <div class="mb-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500"><span x-text="memoryTypeLabel(target.type)"></span><span x-text="memorySourceLabel(target.source)"></span><span x-show="target.authored_by" class="text-amber-300" x-text="'亲笔保护 · ' + target.authored_by"></span><span x-show="target.source === 'mcp' && !target.authored_by">未加亲笔保护</span></div>
+                      <p class="line-clamp-3 text-xs leading-6 text-zinc-300" x-text="target.content"></p>
+                    </button>
+                  </template>
+                </div>
+                <button type="button" @click="mergeDuplicate(memory)" :disabled="!memory.target_id" class="tap w-full rounded-2xl border border-zinc-800 px-4 text-sm transition hover:border-coral disabled:opacity-40">合并到选中的记忆</button>
               </div>
             </article>
           </template>
@@ -706,7 +749,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
 
         <article class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
           <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 class="text-base font-semibold">每日待消化消息</h2>
+            <h2 class="text-base font-semibold">每日消息消化进度</h2>
             <span class="text-xs text-zinc-400" x-text="dreamAnchorLabel()"></span>
           </div>
           <template x-if="dreamDayBars().length === 0">
@@ -719,8 +762,8 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <div class="raw-bar-track min-w-0 flex-1">
                   <div class="raw-bar-fill" :class="day.done ? 'is-done' : ''" :style="'width:' + day.widthPct + '%'"></div>
                 </div>
-                <span class="w-9 shrink-0 text-right text-xs" :class="day.pending ? 'text-coral' : 'text-zinc-400'" x-text="day.raw"></span>
-                <span class="chip hidden shrink-0 sm:inline-flex" :class="day.done ? '' : (day.pending ? 'chip-warn' : 'chip-dim')" x-text="day.stateLabel"></span>
+                <span class="w-24 shrink-0 text-right text-[11px] sm:w-32 sm:text-xs" :class="day.pending ? 'text-coral' : 'text-zinc-400'" x-text="'已 ' + day.processed + ' · 剩 ' + day.remaining"></span>
+                <span class="chip hidden shrink-0 sm:inline-flex" :class="day.done ? '' : (day.pending ? 'chip-warn' : 'chip-dim')" x-text="'共 ' + day.raw"></span>
               </div>
             </template>
           </div>
@@ -1024,6 +1067,9 @@ function memoryAdmin() {
     todayMessages: [],
     candidates: [],
     memories: [],
+    mergeTargets: [],
+    mergeTargetsLoaded: false,
+    mergeTargetsLoading: false,
     precious: [],
     glossary: [],
 
@@ -1176,7 +1222,8 @@ function memoryAdmin() {
         this.candidates = (data.data || []).map(function(item) {
           item.editing = false;
           item.mergeOpen = false;
-          item.target_id = '';
+          item.target_id = item.target_memory_id || '';
+          item.mergeQuery = '';
           item.draft = { content: item.content, type: item.type, fact_key: item.fact_key || '' };
           return item;
         });
@@ -1193,6 +1240,7 @@ function memoryAdmin() {
           item.editing = false;
           item.mergeOpen = false;
           item.target_id = '';
+          item.mergeQuery = '';
           item.draft = { content: item.content };
           item._adminSourceOrder = index;
           return item;
@@ -1239,6 +1287,80 @@ function memoryAdmin() {
       candidate.draft = { content: candidate.content, type: candidate.type, fact_key: candidate.fact_key || '' };
       this.icons();
     },
+    candidateSourceLabel(source) {
+      return {
+        dream_extract: '系统 · 梦境抽取',
+        dream_add: '系统 · 新增建议',
+        dream_update: '系统 · 更新建议',
+        dream_delete: '系统 · 删除建议',
+        extract: '系统 · 自动抽取',
+        zone_full: '系统 · 容量拦截'
+      }[source] || ('系统 · ' + (source || '来源未知'));
+    },
+    memorySourceLabel(source) {
+      return {
+        mcp: 'Elio 手写',
+        manual: '茉茉手动',
+        api: '接口手写',
+        review: '人工审核通过',
+        judge: '系统自动评审',
+        dream: '系统梦境',
+        dream_add: '系统梦境',
+        dream_update: '系统梦境',
+        dream_extract: '系统梦境抽取',
+        extract: '系统自动抽取',
+        legacy_vectorize: '历史导入',
+        vectorize: '历史向量库'
+      }[source] || (source || '来源未知');
+    },
+    async ensureMergeTargets() {
+      if (this.mergeTargetsLoaded || this.mergeTargetsLoading) return;
+      this.mergeTargetsLoading = true;
+      try {
+        const data = await this.request(this.withNamespace('/v1/memory?status=active&limit=1000'));
+        this.mergeTargets = data.data || [];
+        this.mergeTargetsLoaded = true;
+      } catch (error) {
+        this.notify(error.message);
+      }
+      this.mergeTargetsLoading = false;
+    },
+    openCandidateMerge(candidate) {
+      candidate.mergeOpen = !candidate.mergeOpen;
+      candidate.mergeQuery = '';
+      if (candidate.mergeOpen) this.ensureMergeTargets();
+      this.icons();
+    },
+    openMemoryMerge(memory) {
+      memory.mergeOpen = !memory.mergeOpen;
+      memory.mergeQuery = '';
+      if (memory.mergeOpen) this.ensureMergeTargets();
+      this.icons();
+    },
+    mergeTargetOptions(query, excludeId) {
+      const needle = String(query || '').trim().toLowerCase();
+      return (this.mergeTargets || []).filter(function(item) {
+        if (!item || item.id === excludeId) return false;
+        if (!needle) return true;
+        return String(item.content || '').toLowerCase().includes(needle)
+          || String(item.type || '').toLowerCase().includes(needle)
+          || this.memoryTypeLabel(item.type).includes(needle)
+          || this.memorySourceLabel(item.source).toLowerCase().includes(needle);
+      }, this).slice(0, 30);
+    },
+    candidateMergeOptions(candidate) {
+      return this.mergeTargetOptions(candidate.mergeQuery, '');
+    },
+    memoryMergeOptions(memory) {
+      return this.mergeTargetOptions(memory.mergeQuery, memory.id);
+    },
+    selectedMergeTarget(id) {
+      return (this.mergeTargets || []).find(function(item) { return item.id === id; }) || null;
+    },
+    isProtectedMergeTarget(id) {
+      const target = this.selectedMergeTarget(id);
+      return Boolean(target && target.authored_by);
+    },
     candidatePayload(candidate) {
       const draft = candidate.editing ? candidate.draft : candidate;
       return {
@@ -1276,19 +1398,28 @@ function memoryAdmin() {
         this.notify(error.message);
       }
     },
-    async mergeCandidate(candidate) {
-      if (!candidate.target_id) {
-        this.notify('需要目标 memory id');
+    async mergeCandidate(candidate, suggestedTargetId) {
+      const targetId = suggestedTargetId || candidate.target_id;
+      if (!targetId) {
+        this.notify('请先选择目标记忆');
+        return;
+      }
+      const target = candidate.target_memory && candidate.target_memory.id === targetId
+        ? candidate.target_memory
+        : this.selectedMergeTarget(targetId);
+      if (target && target.authored_by) {
+        this.notify('目标带有亲笔保护，请到重要记忆中亲手处理');
         return;
       }
       try {
         const payload = this.candidatePayload(candidate);
-        payload.target_id = candidate.target_id;
+        payload.target_id = targetId;
         await this.request(this.withNamespace('/v1/candidates/' + encodeURIComponent(candidate.id) + '/merge'), {
           method: 'POST',
           body: JSON.stringify(payload)
         });
         await Promise.all([this.loadCandidates(), this.loadMemories(), this.loadBoot()]);
+        this.mergeTargetsLoaded = false;
         this.notify('已合并');
       } catch (error) {
         this.notify(error.message);
@@ -1339,6 +1470,7 @@ function memoryAdmin() {
         });
         this.memoryCreateOpen = false;
         this.memoryType = type;
+        this.mergeTargetsLoaded = false;
         await Promise.all([this.loadMemories(), this.loadBoot()]);
         this.notify('已新增记忆');
       } catch (error) {
@@ -1359,6 +1491,7 @@ function memoryAdmin() {
             tags: memory.tags || []
           })
         });
+        this.mergeTargetsLoaded = false;
         await this.loadMemories();
         this.notify('记忆已保存');
       } catch (error) {
@@ -1369,6 +1502,7 @@ function memoryAdmin() {
       if (!window.confirm('确认删除这条记忆？')) return;
       try {
         await this.request(this.withNamespace('/v1/memory/' + encodeURIComponent(memory.id)), { method: 'DELETE' });
+        this.mergeTargetsLoaded = false;
         await Promise.all([this.loadMemories(), this.loadBoot()]);
         if (this.page === 'more' && this.moreView === 'world') await this.loadWorldFacts();
         this.notify('已删除');
@@ -1456,7 +1590,7 @@ function memoryAdmin() {
     },
     async mergeDuplicate(memory) {
       if (!memory.target_id) {
-        this.notify('需要目标 memory id');
+        this.notify('请先选择要保留的目标记忆');
         return;
       }
       try {
@@ -1467,6 +1601,7 @@ function memoryAdmin() {
           body: JSON.stringify({ namespace: this.namespace, content: combined, type: target.data.type, tags: target.data.tags || [] })
         });
         await this.request(this.withNamespace('/v1/memory/' + encodeURIComponent(memory.id)), { method: 'DELETE' });
+        this.mergeTargetsLoaded = false;
         await Promise.all([this.loadMemories(), this.loadBoot()]);
         this.notify('重复项已合并');
       } catch (error) {
@@ -1695,20 +1830,21 @@ function memoryAdmin() {
     dreamDayBars() {
       const payload = this.dreamStatus || {};
       const counts = payload.raw_message_counts || [];
-      const cursors = {};
-      (payload.cursors || []).forEach(function(item) { cursors[item.date_label] = item.cursor; });
-      const max = counts.reduce(function(m, item) { return Math.max(m, Number(item.raw_messages) || 0); }, 0);
       return counts.map(function(item) {
-        const cursor = cursors[item.date_label];
-        const done = typeof cursor === 'string' && cursor.indexOf('done:') === 0;
         const raw = Number(item.raw_messages) || 0;
+        const processed = Math.min(Math.max(Number(item.processed_messages) || 0, 0), raw);
+        const reportedRemaining = Number(item.remaining_messages);
+        const remaining = Math.max(Number.isFinite(reportedRemaining) ? reportedRemaining : (raw - processed), 0);
+        const done = raw > 0 && remaining === 0;
         return {
           date: item.date_label,
           raw: raw,
+          processed: processed,
+          remaining: remaining,
           done: done,
-          pending: raw > 0 && !done,
-          widthPct: max > 0 && raw > 0 ? Math.max(Math.round((raw / max) * 100), 4) : 0,
-          stateLabel: done ? '已梦完' : (cursor ? '梦到一半' : '未开始')
+          pending: remaining > 0,
+          widthPct: raw > 0 && processed > 0 ? Math.max(Math.round((processed / raw) * 100), 4) : 0,
+          stateLabel: done ? '已完成' : (processed > 0 ? '处理中' : '未开始')
         };
       });
     },
@@ -1738,7 +1874,7 @@ function memoryAdmin() {
         no_messages: '没有新消息',
         dry_run: '只是预演',
         dream_disabled: '梦境未启用',
-        model_error: '模型出错',
+        model_error: '模型服务调用失败',
         model_invalid_json: '模型返回无法解析',
         extract_model_error: '抽取模型出错',
         v2_disabled: 'v2 未启用'
@@ -1758,6 +1894,9 @@ function memoryAdmin() {
             }).join('；');
           }
         } catch (error) {}
+        if (/^status=\d{3}$/.test(text)) {
+          text = '模型服务返回 HTTP ' + text.slice(7) + '；这条历史记录没有保存服务端错误正文';
+        }
         parts.push(text);
       }
       return parts.join(' · ');

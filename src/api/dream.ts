@@ -6,6 +6,7 @@ import {
   getDateLabelsLookback,
   getDateRangeForLabel,
   getTargetDigestDateLabel,
+  readDailyCursor,
   readDreamCursorValue,
   readDreamTimeZoneFromEnv,
   runDailyMemoryDigest
@@ -17,6 +18,29 @@ import type { Env } from "../types";
 const DREAM_STATUS_LOOKBACK_DAYS = 7;
 const DREAM_CURSOR_DATE_LABELS = 3;
 const DREAM_HARVEST_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+async function countProcessedMessagesForDate(
+  env: Env,
+  input: { namespace: string; dateLabel: string; timeZone: string; cursor: string | null; rawMessages: number }
+): Promise<number> {
+  if (!input.cursor) return 0;
+  const { startIso, endIso } = getDateRangeForLabel(input.dateLabel, input.timeZone);
+  const state = readDailyCursor(input.cursor, startIso, endIso);
+  if (state.done) return input.rawMessages;
+  if (!state.after) return 0;
+  const row = await env.DB
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM messages
+       WHERE namespace = ?
+         AND role IN ('user', 'assistant')
+         AND created_at >= ? AND created_at < ?
+         AND created_at <= ?`
+    )
+    .bind(input.namespace, startIso, endIso, state.after)
+    .first<{ count: number }>();
+  return Math.min(Math.max(Number(row?.count) || 0, 0), input.rawMessages);
+}
 
 function isValidHarvestDateLabel(label: string): boolean {
   if (!DREAM_HARVEST_DATE_RE.test(label)) return false;
@@ -58,6 +82,22 @@ export async function handleDreamStatus(request: Request, env: Env): Promise<Res
         }))
       )
     ]);
+    const cursorByDate = new Map(cursors.map((item) => [item.date_label, item.cursor]));
+    const messageProgress = await Promise.all(rawMessageCounts.map(async (item) => {
+      const cursor = cursorByDate.get(item.date_label) ?? null;
+      const processedMessages = await countProcessedMessagesForDate(env, {
+        namespace,
+        dateLabel: item.date_label,
+        timeZone,
+        cursor,
+        rawMessages: item.raw_messages
+      });
+      return {
+        ...item,
+        processed_messages: processedMessages,
+        remaining_messages: Math.max(item.raw_messages - processedMessages, 0)
+      };
+    }));
 
     return json({
       data: {
@@ -66,7 +106,7 @@ export async function handleDreamStatus(request: Request, env: Env): Promise<Res
         anchor_date_label: anchorDateLabel,
         dream_runs: runs,
         cursors,
-        raw_message_counts: rawMessageCounts
+        raw_message_counts: messageProgress
       }
     });
   } catch (error) {

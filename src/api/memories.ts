@@ -1,7 +1,7 @@
 import { authenticate } from "../auth/apiKey";
 import { requireScope } from "../auth/scopes";
 import { getOrCreateConversation } from "../db/conversations";
-import { createMemory, getMemoryById, listMemoriesPage, softDeleteMemory, updateMemory } from "../db/memories";
+import { createMemory, fetchMemoriesByIds, getMemoryById, listMemoriesPage, softDeleteMemory, updateMemory } from "../db/memories";
 import { listMessagesByNamespaceInRange, saveIngestMessages } from "../db/messages";
 import { runDailyMemoryDigest } from "../memory/dailyDigest";
 import { deleteMemoryEmbedding, upsertMemoryEmbedding } from "../memory/embedding";
@@ -787,7 +787,17 @@ export async function handleMemoryCandidates(request: Request, env: Env): Promis
       status: readString(url.searchParams.get("status")) || "pending",
       limit: readPositiveInt(url.searchParams.get("limit"), 100, 200)
     });
-    return json({ data: rows.map(toCandidateApiRecord) });
+    const targetRows = await fetchMemoriesByIds(env.DB, {
+      namespace,
+      ids: rows.flatMap((row) => row.target_memory_id ? [row.target_memory_id] : [])
+    });
+    const targets = new Map(targetRows.map((row) => [row.id, toMemoryApiRecord(row)]));
+    return json({
+      data: rows.map((row) => ({
+        ...toCandidateApiRecord(row),
+        target_memory: row.target_memory_id ? targets.get(row.target_memory_id) ?? null : null
+      }))
+    });
   }
 
   const scopeError = requireScope(auth.profile, "memory:write");
@@ -809,6 +819,12 @@ export async function handleMemoryCandidates(request: Request, env: Env): Promis
 
   if (action === "approve") {
     if (candidate.source === "dream_delete" && candidate.target_memory_id) {
+      const target = await getMemoryById(env.DB, { namespace, id: candidate.target_memory_id });
+      if (!target) return openAiError("Target memory not found", 404);
+      if (target.authored_by) {
+        const conflict = handAuthoredConflict(new HandAuthoredProtectedError(target.id));
+        if (conflict) return conflict;
+      }
       const archived = await archiveMemory(env, { namespace, id: candidate.target_memory_id });
       if (!archived) return openAiError("Target memory not found", 404);
       const updated = await updateMemoryCandidateStatus(env.DB, {
@@ -925,6 +941,10 @@ export async function handleMemoryCandidates(request: Request, env: Env): Promis
     if (!targetId) return openAiError("target_id is required", 400);
     const target = await getMemoryById(env.DB, { namespace, id: targetId });
     if (!target) return openAiError("Target memory not found", 404);
+    if (target.authored_by) {
+      const conflict = handAuthoredConflict(new HandAuthoredProtectedError(target.id));
+      if (conflict) return conflict;
+    }
     const mergedContent = content || target.content;
     const updatedTarget = await updateMemory(env.DB, {
       namespace,

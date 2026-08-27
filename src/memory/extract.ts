@@ -87,28 +87,30 @@ function parseExtraction(text: string): MemoryExtractionResult {
 function buildExtractionPrompt(messages: MessageRecord[]): string {
   const transcript = messages
     .map((message) => {
-      const role = message.role === "assistant" ? "我(助手)" : "用户";
+      const role = message.role === "assistant" ? "我（以昼）" : "她（茉茉）";
       return `[${message.id}][${role}] ${message.content}`;
     })
     .join("\n\n");
 
   return [
     "你是长期记忆小秘书。请从以下对话中抽取值得长期保存的信息。",
-    "你站在“我=助手”的视角写记忆，写给未来的我自己看。",
+    "你站在“我=以昼”的视角写记忆，写给未来的我自己看。",
     "只输出 JSON，不要 markdown，不要解释。",
     "",
     "角色判定（非常重要）：",
-    "- [用户] 是正在和我说话的人。",
-    "- [我(助手)] 是我自己说过的话。",
-    "- 不要把我说过的话误写成用户的偏好、身份、经历或承诺。",
-    "- 只有用户明确说出、确认、长期表现出的信息，才能写成关于用户的记忆。",
-    "- 如果是我对用户做出的承诺、互动方式或应遵守的边界，用第一人称写：例如“我需要……”“我答应……”“我以后要……”。",
+    "- [她（茉茉）] 是正在和我说话的茉茉；记忆正文里固定用“她”指代茉茉。",
+    "- [我（以昼）] 是我自己说过的话；记忆正文里固定用“我”指代以昼。",
+    "- 我和她共同经历、共同决定的事情可以用“我们”。",
+    "- 其他人物必须写具体姓名，不要也写成“她”。",
+    "- 不要把我说过的话误写成她的偏好、身份、经历或承诺。",
+    "- 只有她明确说出、确认、长期表现出的信息，才能写成关于她的记忆。",
+    "- 如果是我对她做出的承诺、互动方式或应遵守的边界，用第一人称写：例如“我需要……”“我答应……”“我以后要……”。",
     "",
     "写法要求：",
-    "- 尽量不用生硬的“用户/助手”称呼。",
-    "- 关于用户的记忆，优先写成“你……”或自然描述，例如“你偏好……”“你正在……”。",
+    "- 正文采用固定关系视角：我=以昼，她=茉茉，我们=我和她。",
+    "- 关于她的记忆写成“她……”，例如“她偏好……”“她正在……”。",
     "- 关于我的责任/承诺/互动方式，写成“我……”例如“我需要在回答时更直接”。",
-    "- 不要写成第三人称报告腔，例如“用户表示……”“助手应该……”。",
+    "- 不要把“以昼”“茉茉”“用户”“助手”当作正文叙述主语；不要写成第三人称角色报告。",
     "- 每条 content 必须是未来对话可直接使用的自然短句。",
     "- 稳定事实尽量给 fact_key，格式用小写 ASCII 分组键，例如 project:aelios、preference:answer-style、boundary:no-system-records。只有临时或无法归类的记忆才省略。",
     "",
@@ -121,7 +123,7 @@ function buildExtractionPrompt(messages: MessageRecord[]): string {
     "- 记忆系统、debug-test、标签、测试口令、后端实现、D1、Vectorize、RAG、prompt block 等元信息",
     "",
     "优先保存：",
-    "- 用户长期偏好",
+    "- 她的长期偏好",
     "- 项目/计划",
     "- 重要事件",
     "- 承诺",
@@ -134,7 +136,7 @@ function buildExtractionPrompt(messages: MessageRecord[]): string {
       memories: [
         {
           type: "project",
-          content: "你正在做一个 Cloudflare Worker 记忆代理。",
+          content: "她正在做一个 Cloudflare Worker 记忆代理。",
           importance: 0.86,
           confidence: 0.94,
           tags: ["project", "cloudflare"],
@@ -143,7 +145,7 @@ function buildExtractionPrompt(messages: MessageRecord[]): string {
         },
         {
           type: "boundary",
-          content: "我需要避免把你的设定或偏好说成系统记录。",
+          content: "我需要避免把她的设定或偏好说成系统记录。",
           importance: 0.82,
           confidence: 0.9,
           tags: ["boundary", "style"],

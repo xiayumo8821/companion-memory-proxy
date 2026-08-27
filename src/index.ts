@@ -54,11 +54,22 @@ function getDailyDigestMaxRuns(env: Env): number {
 async function runDailyMemoryDigestBatches(env: Env, namespace: string): Promise<unknown[]> {
   const results: unknown[] = [];
   const maxRuns = getDailyDigestMaxRuns(env);
+  let modelUnavailable = false;
 
   for (let i = 0; i < maxRuns; i += 1) {
     const result = await runDailyMemoryDigest(env, namespace, { trigger: "cron" });
     results.push({ type: "primary", result });
+    if (!result.ran && ["missing_model", "model_error", "extract_model_error"].includes(result.reason)) {
+      modelUnavailable = true;
+    }
     if (!result.ran || !result.stats?.hasMore) break;
+  }
+
+  // 同一个模型刚刚连续重试仍不可用时，立即 backfill 只会把前几天也打成相同错误。
+  // 保留各日期游标，交给下一次 cron 续跑；不要在一次任务里重复轰炸服务端。
+  if (modelUnavailable) {
+    results.push({ type: "backfill_skipped", reason: "model_unavailable" });
+    return results;
   }
 
   const backfill = await runDreamBackfill(env, namespace, { maxDates: 2, lookback: 3 });
