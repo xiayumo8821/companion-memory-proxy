@@ -5,6 +5,7 @@
 // 默认关闭 (CANDIDATE_JUDGE_ENABLED !== "true" 时零开销)，开启后由 scheduled 在抽取批次后跑一轮。
 
 import { getMessagesByIds } from "../db/messages";
+import { getMemoryById } from "../db/memories";
 import {
   archiveMemory,
   getActiveMemoryByFactKey,
@@ -244,6 +245,13 @@ export async function runCandidateJudge(
     if (candidate.source === "zone_full") {
       kept += 1;
       continue;
+    }
+    if (candidate.source === "dream_delete" && candidate.target_memory_id) {
+      const target = await getMemoryById(env.DB, { namespace, id: candidate.target_memory_id });
+      if (target?.authored_by) {
+        kept += 1;
+        continue;
+      }
     }
     try {
       const sourceMessageIds = parseJsonArray(candidate.source_message_ids);
