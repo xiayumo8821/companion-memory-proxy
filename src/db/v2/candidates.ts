@@ -193,3 +193,19 @@ export async function updateMemoryCandidateStatus(
     .run();
   return getMemoryCandidateById(db, input);
 }
+
+export async function resolvePendingDeleteCandidatesForTarget(
+  db: D1Database,
+  input: { namespace: string; targetMemoryId: string; decisionNote: string }
+): Promise<number> {
+  const result = await db
+    .prepare(
+      `UPDATE memory_candidates
+       SET status = 'approved', decision_note = ?, updated_at = ?
+       WHERE namespace = ? AND status = 'pending' AND source = 'dream_delete'
+         AND target_memory_id = ?`
+    )
+    .bind(input.decisionNote, nowIso(), input.namespace, input.targetMemoryId)
+    .run();
+  return Number(result.meta?.changes ?? 0);
+}
