@@ -27,6 +27,7 @@ import {
   listGlossary,
   listMemoryCandidates,
   listPrecious,
+  resolvePendingDeleteCandidatesForTarget,
   type MemoryCandidateRow,
   supersedeMemory,
   updateGlossary,
@@ -843,18 +844,22 @@ export async function handleMemoryCandidates(request: Request, env: Env): Promis
     if (candidate.source === "dream_delete" && candidate.target_memory_id) {
       const target = await getMemoryById(env.DB, { namespace, id: candidate.target_memory_id });
       if (!target) return openAiError("Target memory not found", 404);
-      if (target.authored_by) {
+      const targetActive = target.status === "active" && target.version_status !== "superseded";
+      const ownerConfirmed = readBoolean(body.owner_confirmed);
+      if (targetActive && target.authored_by && !ownerConfirmed) {
         const conflict = handAuthoredConflict(new HandAuthoredProtectedError(target.id));
         if (conflict) return conflict;
       }
-      const archived = await archiveMemory(env, { namespace, id: candidate.target_memory_id });
-      if (!archived) return openAiError("Target memory not found", 404);
+      if (targetActive) {
+        const archived = await archiveMemory(env, { namespace, id: candidate.target_memory_id });
+        if (!archived) return openAiError("Target memory not found", 404);
+      }
       const updated = await updateMemoryCandidateStatus(env.DB, {
         namespace,
         id,
         status: "approved",
         targetMemoryId: candidate.target_memory_id,
-        decisionNote: readString(body.decision_note) || "dream_delete approved"
+        decisionNote: readString(body.decision_note) || (targetActive ? "dream_delete owner approved" : "target already inactive")
       });
       return json({
         data: {
@@ -1100,7 +1105,14 @@ async function handleDeleteMemory(
   }
 
   const deleted = await softDeleteMemory(env.DB, { namespace: profile.namespace, id });
-  if (deleted) await deleteMemoryEmbeddingBestEffort(env, deleted);
+  if (deleted) {
+    await deleteMemoryEmbeddingBestEffort(env, deleted);
+    await resolvePendingDeleteCandidatesForTarget(env.DB, {
+      namespace: profile.namespace,
+      targetMemoryId: id,
+      decisionNote: "owner deleted target directly"
+    });
+  }
   return json({ data: { id: existing.id, vector_id: existing.vector_id, deleted: true } });
 }
 
