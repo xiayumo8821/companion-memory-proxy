@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const [source, memoriesApi, dreamApi, dreamExtract, indexSource] = await Promise.all([
+const [source, memoriesApi, dreamApi, dreamExtract, indexSource, candidateJudge] = await Promise.all([
   readFile(new URL("../src/api/admin/ui.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/api/memories.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/api/dream.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/memory/dream/extractPhase.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/index.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/memory/candidateJudge.ts", import.meta.url), "utf8"),
 ]);
 const marker = "<script>\nfunction memoryAdmin()";
 const start = source.lastIndexOf(marker);
@@ -80,6 +81,9 @@ assert.match(source, /处理日期是梦境对应的聊天日期；实际运行�
 assert.match(source, /'实际运行 ' \+ fmt\(run\.started_at\)/);
 
 assert.equal(admin.candidateSourceLabel("dream_update"), "系统 · 更新建议");
+assert.match(source, /x-show="candidate\.source !== 'dream_delete'"[^>]+x-text="candidateSourceLabel\(candidate\.source\)"/);
+assert.match(source, /x-show="candidate\.fact_key"[^>]+x-text="candidate\.fact_key"/);
+assert.doesNotMatch(source, /无固定键/);
 assert.equal(admin.memorySourceLabel("mcp"), "Elio 手写");
 assert.equal(admin.memorySourceLabel("manual"), "茉茉手动");
 
@@ -111,8 +115,15 @@ assert.match(admin.dreamRunNote({ reason: "model_error", error: "status=500" }),
 
 assert.match(source, /目标记忆预览/);
 assert.match(source, /待归档记忆/);
-assert.match(source, /建议保留的重复记忆/);
-assert.match(source, /系统没有给出可唯一定位的保留对象/);
+assert.match(source, /查看重复记忆原文对照/);
+assert.match(source, /candidate\.related_memories && candidate\.related_memories\.length > 0/);
+assert.match(source, /candidate\.related_memories\.length \+ ' 条 · 点击展开'/);
+assert.doesNotMatch(source, /系统没有找到可唯一对照的重复记忆/);
+assert.doesNotMatch(source, /review-accent/);
+assert.doesNotMatch(source, /这是系统提出的归档建议/);
+assert.match(source, /payload\.owner_confirmed = true/);
+assert.match(source, /确认由你本人归档/);
+assert.doesNotMatch(source, /:disabled="candidate\.source === 'dream_delete'.*authored_by/);
 assert.match(source, /一键合并到系统建议目标/);
 assert.match(source, /搜索记忆正文或类型/);
 assert.match(source, /亲笔保护/);
@@ -122,14 +133,17 @@ assert.match(source, /<select x-model="memory\.draft\.type"/);
 assert.match(source, /memory\.draft = \{ type: memory\.type, content: memory\.content \}/);
 assert.match(source, /type: nextType/);
 assert.match(source, /记忆已保存，并移到/);
-assert.match(source, /candidate\.source === 'dream_delete'.*candidate\.target_memory\.authored_by/);
+assert.match(source, /candidate\.target_memory && candidate\.target_memory\.authored_by/);
 assert.doesNotMatch(source, /placeholder="目标 memory id"/);
 assert.doesNotMatch(source, /candidate\.target_memory\.tags/);
 assert.match(memoriesApi, /target_memory: row\.target_memory_id \? targets\.get/);
 assert.match(memoriesApi, /related_memories:/);
 assert.match(memoriesApi, /memoryIdReferences\(row\.decision_note\)/);
 assert.match(memoriesApi, /fetchMemoriesByIdPrefixes/);
-assert.ok((memoriesApi.match(/if \(target\.authored_by\)/g) || []).length >= 2, "delete and merge must both protect hand-authored targets");
+assert.match(memoriesApi, /resolvePendingDeleteCandidatesForTarget/);
+assert.match(memoriesApi, /targetActive && target\.authored_by && !ownerConfirmed/);
+assert.ok((memoriesApi.match(/target\.authored_by/g) || []).length >= 2, "delete and merge must both retain hand-authored protection checks");
+assert.match(candidateJudge, /candidate\.source === "dream_delete"[\s\S]*?target\?\.authored_by[\s\S]*?kept \+= 1/);
 assert.match(dreamApi, /processed_messages: processedMessages/);
 assert.match(dreamApi, /remaining_messages: Math\.max/);
 assert.match(dreamExtract, /readModelErrorDetail\(response\)/);
