@@ -378,43 +378,45 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <span class="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-semibold text-zinc-950">更新提案</span>
               </template>
               <span class="rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-zinc-950" x-text="memoryTypeLabel(candidate.type)"></span>
-              <span class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="candidateSourceLabel(candidate.source)"></span>
+              <span x-show="candidate.source !== 'dream_delete'" class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="candidateSourceLabel(candidate.source)"></span>
               <span class="rounded-full border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400" x-text="'confidence ' + pct(candidate.confidence)"></span>
-              <span class="min-w-0 truncate text-xs text-zinc-400" x-text="candidate.fact_key || '无固定键'"></span>
+              <span x-show="candidate.fact_key" class="min-w-0 truncate text-xs text-zinc-400" x-text="candidate.fact_key"></span>
             </div>
-            <template x-if="candidate.source === 'dream_delete'">
-              <p class="mb-2 text-xs text-red-300/80">
-                这是系统提出的归档建议。选择“确认归档”才会归档目标记忆；选择“保留原记忆”会拒绝这份提案。
-              </p>
-            </template>
             <template x-if="candidate.source === 'dream_update'">
               <p class="mb-2 text-xs text-amber-300/80">这是系统写出的新版本。选择“采用新版本”会让它接替下面的原记忆；原版本仍保留在历史链中。</p>
             </template>
             <template x-if="candidate.source === 'dream_delete' && candidate.target_memory">
               <div class="mb-3 space-y-2">
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div class="rounded-2xl border border-red-400/25 bg-[#0a0a0b] p-3">
-                    <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                      <span class="font-semibold text-red-200">待归档记忆</span>
-                      <span class="chip chip-dim" x-text="memorySourceLabel(candidate.target_memory.source)"></span>
-                      <span class="chip chip-warn" x-show="candidate.target_memory.authored_by" x-text="'亲笔保护 · ' + candidate.target_memory.authored_by"></span>
-                      <span class="chip chip-dim" x-show="candidate.target_memory.source === 'mcp' && !candidate.target_memory.authored_by">未加亲笔保护</span>
-                    </div>
-                    <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="candidate.target_memory.content"></p>
+                <div class="rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
+                  <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                    <span class="font-semibold text-zinc-200">待归档记忆</span>
+                    <span class="chip chip-dim" x-text="memorySourceLabel(candidate.target_memory.source)"></span>
+                    <span class="chip chip-warn" x-show="candidate.target_memory.authored_by" x-text="'亲笔保护 · ' + candidate.target_memory.authored_by"></span>
+                    <span class="chip chip-dim" x-show="candidate.target_memory.source === 'mcp' && !candidate.target_memory.authored_by">未加亲笔保护</span>
                   </div>
-                  <template x-for="related in candidate.related_memories || []" :key="related.id">
-                    <div class="rounded-2xl border border-emerald-400/25 bg-[#0a0a0b] p-3">
-                      <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                        <span class="font-semibold text-emerald-200">建议保留的重复记忆</span>
-                        <span class="chip chip-dim" x-text="memorySourceLabel(related.source)"></span>
-                        <span class="chip chip-warn" x-show="related.authored_by" x-text="'亲笔保护 · ' + related.authored_by"></span>
-                        <span class="chip chip-dim" x-show="related.source === 'mcp' && !related.authored_by">未加亲笔保护</span>
-                      </div>
-                      <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="related.content"></p>
-                    </div>
-                  </template>
+                  <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="candidate.target_memory.content"></p>
                 </div>
-                <p x-show="!candidate.related_memories || candidate.related_memories.length === 0" class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs leading-6 text-amber-200/80">系统没有给出可唯一定位的保留对象，建议先选择“保留原记忆”。</p>
+                <template x-if="candidate.related_memories && candidate.related_memories.length > 0">
+                  <details class="overflow-hidden rounded-2xl border border-zinc-800 bg-[#0a0a0b]">
+                    <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-zinc-400">
+                      <span>查看重复记忆原文对照</span>
+                      <span class="shrink-0 font-normal" x-text="candidate.related_memories.length + ' 条 · 点击展开'"></span>
+                    </summary>
+                    <div class="space-y-2 border-t border-zinc-800 p-3">
+                      <template x-for="related in candidate.related_memories" :key="related.id">
+                        <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+                          <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                            <span class="font-semibold text-zinc-200">重复记忆原文</span>
+                            <span class="chip chip-dim" x-text="memorySourceLabel(related.source)"></span>
+                            <span class="chip chip-warn" x-show="related.authored_by" x-text="'亲笔保护 · ' + related.authored_by"></span>
+                            <span class="chip chip-dim" x-show="related.source === 'mcp' && !related.authored_by">未加亲笔保护</span>
+                          </div>
+                          <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="related.content"></p>
+                        </div>
+                      </template>
+                    </div>
+                  </details>
+                </template>
                 <p class="text-[11px] text-zinc-500" x-show="candidate.decision_note" x-text="candidate.decision_note"></p>
               </div>
             </template>
@@ -447,8 +449,8 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               </div>
             </template>
             <div class="mt-4 grid grid-cols-2 gap-3 md:flex md:flex-wrap">
-              <button type="button" @click="approveCandidate(candidate)" :disabled="candidate.source === 'dream_delete' && candidate.target_memory && candidate.target_memory.authored_by" class="tap inline-flex items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out disabled:cursor-not-allowed disabled:opacity-40">
-                <i data-lucide="check" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? (candidate.target_memory && candidate.target_memory.authored_by ? '亲笔保护' : '确认归档') : (candidate.source === 'dream_update' ? '采用新版本' : '通过')"></span>
+              <button type="button" @click="approveCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out">
+                <i data-lucide="check" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? (candidate.target_memory && candidate.target_memory.status !== 'active' ? '关闭已处理提案' : '确认归档') : (candidate.source === 'dream_update' ? '采用新版本' : '通过')"></span>
               </button>
               <button type="button" @click="discardCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral">
                 <i data-lucide="x" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? '保留原记忆' : '丢弃提案'"></span>
@@ -1417,13 +1419,24 @@ function memoryAdmin() {
       };
     },
     async approveCandidate(candidate) {
+      const payload = this.candidatePayload(candidate);
+      if (candidate.source === 'dream_delete') {
+        const inactive = candidate.target_memory && candidate.target_memory.status !== 'active';
+        const message = inactive
+          ? '这条记忆已经不在重要记忆中。确认关闭这份旧删除提案？'
+          : candidate.target_memory && candidate.target_memory.authored_by
+            ? '这条记忆由 Elio 手写并带有亲笔保护。确认由你本人归档？'
+            : '确认归档这条记忆？';
+        if (!window.confirm(message)) return;
+        payload.owner_confirmed = true;
+      }
       try {
         await this.request(this.withNamespace('/v1/candidates/' + encodeURIComponent(candidate.id) + '/approve'), {
           method: 'POST',
-          body: JSON.stringify(this.candidatePayload(candidate))
+          body: JSON.stringify(payload)
         });
         await Promise.all([this.loadCandidates(), this.loadMemories(), this.loadBoot()]);
-        this.notify('已通过');
+        this.notify(candidate.source === 'dream_delete' ? '删除提案已处理' : '已通过');
       } catch (error) {
         this.notify(error.message);
       }
