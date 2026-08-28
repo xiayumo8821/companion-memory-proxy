@@ -24,3 +24,28 @@ export async function enqueueRetentionIfNeeded(
 
   await sendQueueMessage(env, message);
 }
+
+/**
+ * Start nightly maintenance as a queue relay. Each Dream batch and each rollup
+ * phase then receives a fresh Worker invocation/subrequest budget.
+ *
+ * Unlike retention, this deliberately has no direct fallback: the scheduled
+ * handler keeps the historical inline path when the Queue binding is absent.
+ */
+export async function enqueueDreamMaintenance(
+  env: Env,
+  namespace: string,
+  maxRuns: number
+): Promise<boolean> {
+  if (!env.MEMORY_QUEUE) return false;
+
+  await env.MEMORY_QUEUE.send({
+    type: "dream_maintenance",
+    namespace,
+    stage: "dream_primary",
+    remaining_runs: maxRuns,
+    remaining_backfill_dates: 2,
+    skipped_backfill_dates: []
+  });
+  return true;
+}

@@ -132,7 +132,25 @@ export interface RetentionQueueMessage {
   namespace: string;
 }
 
-export type QueueMessage = RetentionQueueMessage;
+export type DreamMaintenanceStage =
+  | "dream_primary"
+  | "dream_backfill"
+  | "diary"
+  | "retention_github"
+  | "weekly"
+  | "monthly";
+
+export interface DreamMaintenanceQueueMessage {
+  type: "dream_maintenance";
+  namespace: string;
+  stage: DreamMaintenanceStage;
+  date_label?: string;
+  remaining_runs?: number;
+  remaining_backfill_dates?: number;
+  skipped_backfill_dates?: string[];
+}
+
+export type QueueMessage = RetentionQueueMessage | DreamMaintenanceQueueMessage;
 
 export type Scope =
   | "chat:proxy"
@@ -341,4 +359,3 @@ export interface PerceptionCacheRow {
   items: string;
   created_at: string;
 }
-

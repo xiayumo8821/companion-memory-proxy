@@ -36,6 +36,7 @@ import {
 } from "./memory/dream/rollupPhase";
 import { runMemoryRetention } from "./memory/retention";
 import { handleQueueMessage } from "./queue/consumer";
+import { enqueueDreamMaintenance } from "./queue/producer";
 import type { Env, QueueMessage } from "./types";
 import { openAiError } from "./utils/json";
 
@@ -245,6 +246,13 @@ export default {
 
     ctx.waitUntil(
       (async () => {
+        const queued = await enqueueDreamMaintenance(env, namespace, getDailyDigestMaxRuns(env));
+        if (queued) {
+          console.log("scheduled memory maintenance queued", { namespace, cron });
+          return;
+        }
+
+        // Local/no-Queue fallback: preserve the historical inline sequence.
         const results: unknown[] = [];
 
         const dreamResults = await runDailyMemoryDigestBatches(env, namespace);

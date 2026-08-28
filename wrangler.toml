@@ -98,7 +98,9 @@ queue = "companion-memory"
 
 [[queues.consumers]]
 queue = "companion-memory"
-max_batch_size = 10
+# Dream maintenance uses the same Queue as retention. One message per Worker
+# invocation gives every Dream/rollup stage a fresh subrequest budget.
+max_batch_size = 1
 max_batch_timeout = 30
 
 # 不写 database_id：Deploy 按钮 / wrangler 自动开资源按名字建库，

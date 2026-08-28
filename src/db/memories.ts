@@ -176,6 +176,33 @@ export async function fetchMemoriesByIds(
   return rows;
 }
 
+// Dream 的删除理由有时只回显 memory id 的短前缀（例如 mem_3cb5e191）。
+// 审核页需要把这个引用解析成真正的对照记忆；只有唯一命中时才采用，
+// 避免短前缀碰撞时展示或操作错误的条目。
+export async function fetchMemoriesByIdPrefixes(
+  db: D1Database,
+  input: { namespace: string; prefixes: string[] }
+): Promise<MemoryRecord[]> {
+  const prefixes = [...new Set(
+    input.prefixes
+      .map((prefix) => prefix.trim())
+      .filter((prefix) => /^mem_[a-f0-9]{8,32}$/i.test(prefix))
+  )];
+  if (prefixes.length === 0) return [];
+
+  const rows = new Map<string, MemoryRecord>();
+  for (let index = 0; index < prefixes.length; index += FETCH_BY_IDS_BATCH_SIZE) {
+    const batch = prefixes.slice(index, index + FETCH_BY_IDS_BATCH_SIZE);
+    const predicates = batch.map(() => "id LIKE ?").join(" OR ");
+    const result = await db
+      .prepare(`SELECT * FROM memories WHERE namespace = ? AND (${predicates})`)
+      .bind(input.namespace, ...batch.map((prefix) => `${prefix}%`))
+      .all<MemoryRecord>();
+    for (const row of result.results ?? []) rows.set(row.id, row);
+  }
+  return [...rows.values()];
+}
+
 export interface MemoryWithLifecycle {
   record: MemoryRecord;
   lifecycle: MemoryLifecycleRow | null;

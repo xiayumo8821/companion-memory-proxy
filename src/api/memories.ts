@@ -1,7 +1,7 @@
 import { authenticate } from "../auth/apiKey";
 import { requireScope } from "../auth/scopes";
 import { getOrCreateConversation } from "../db/conversations";
-import { createMemory, fetchMemoriesByIds, getMemoryById, listMemoriesPage, softDeleteMemory, updateMemory } from "../db/memories";
+import { createMemory, fetchMemoriesByIdPrefixes, fetchMemoriesByIds, getMemoryById, listMemoriesPage, softDeleteMemory, updateMemory } from "../db/memories";
 import { listMessagesByNamespaceInRange, saveIngestMessages } from "../db/messages";
 import { runDailyMemoryDigest } from "../memory/dailyDigest";
 import { deleteMemoryEmbedding, upsertMemoryEmbedding } from "../memory/embedding";
@@ -443,6 +443,11 @@ function toCandidateApiRecord(row: MemoryCandidateRow) {
   };
 }
 
+function memoryIdReferences(value: string | null): string[] {
+  if (!value) return [];
+  return [...new Set(value.match(/\bmem_[a-f0-9]{8,32}\b/gi) ?? [])];
+}
+
 function yesterdayDateLabel(now = new Date()): string {
   const date = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   return date.toISOString().slice(0, 10);
@@ -792,10 +797,27 @@ export async function handleMemoryCandidates(request: Request, env: Env): Promis
       ids: rows.flatMap((row) => row.target_memory_id ? [row.target_memory_id] : [])
     });
     const targets = new Map(targetRows.map((row) => [row.id, toMemoryApiRecord(row)]));
+    const relatedReferences = new Map(rows.map((row) => [
+      row.id,
+      row.source === "dream_delete"
+        ? memoryIdReferences(row.decision_note).filter((reference) => reference !== row.target_memory_id)
+        : []
+    ]));
+    const referencedRows = await fetchMemoriesByIdPrefixes(env.DB, {
+      namespace,
+      prefixes: [...relatedReferences.values()].flat()
+    });
+    const resolveReference = (reference: string) => {
+      const matches = referencedRows.filter((row) => row.id === reference || row.id.startsWith(reference));
+      return matches.length === 1 ? toMemoryApiRecord(matches[0]) : null;
+    };
     return json({
       data: rows.map((row) => ({
         ...toCandidateApiRecord(row),
-        target_memory: row.target_memory_id ? targets.get(row.target_memory_id) ?? null : null
+        target_memory: row.target_memory_id ? targets.get(row.target_memory_id) ?? null : null,
+        related_memories: (relatedReferences.get(row.id) ?? [])
+          .map(resolveReference)
+          .filter((memory) => memory && memory.id !== row.target_memory_id)
       }))
     });
   }

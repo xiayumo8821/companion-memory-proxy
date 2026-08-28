@@ -61,18 +61,28 @@ export { countRawMessagesForDateLabel, readDreamCursorValue };
 export async function runDreamBackfill(
   env: Env,
   namespace: string,
-  options: { maxDates?: number; lookback?: number } = {}
+  options: {
+    maxDates?: number;
+    lookback?: number;
+    maxAttempts?: number;
+    excludeDateLabels?: string[];
+  } = {}
 ): Promise<Array<{ dateLabel: string; result: DailyDigestRunResult }>> {
   const maxDates = options.maxDates ?? 2;
   const lookback = options.lookback ?? 3;
+  const maxAttempts = options.maxAttempts ?? Number.POSITIVE_INFINITY;
+  const excluded = new Set(options.excludeDateLabels ?? []);
   const timeZone = readDreamTimeZone(env);
   const anchorDateLabel = getTargetDigestDateLabel(timeZone);
   const candidateLabels = getDateLabelsLookback(anchorDateLabel, lookback + 1, timeZone).slice(1);
   const results: Array<{ dateLabel: string; result: DailyDigestRunResult }> = [];
   let backfilled = 0;
+  let attempts = 0;
 
   for (const dateLabel of candidateLabels) {
     if (backfilled >= maxDates) break;
+    if (attempts >= maxAttempts) break;
+    if (excluded.has(dateLabel)) continue;
 
     const { startIso, endIso } = getDateRangeForLabel(dateLabel, timeZone);
     const cursor = await readDreamCursorValue(env.DB, { namespace, dateLabel });
@@ -83,6 +93,7 @@ export async function runDreamBackfill(
     if (rawCount === 0) continue;
 
     const result = await runDailyMemoryDigest(env, namespace, { dateLabel, trigger: "cron" });
+    attempts += 1;
     results.push({ dateLabel, result });
     if (result.ran) backfilled += 1;
   }

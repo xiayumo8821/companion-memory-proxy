@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const source = await readFile(new URL("../src/api/admin/ui.ts", import.meta.url), "utf8");
+const [source, memoriesApi, dreamApi, dreamExtract, indexSource] = await Promise.all([
+  readFile(new URL("../src/api/admin/ui.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/api/memories.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/api/dream.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/memory/dream/extractPhase.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/index.ts", import.meta.url), "utf8"),
+]);
 const marker = "<script>\nfunction memoryAdmin()";
 const start = source.lastIndexOf(marker);
 const end = source.lastIndexOf("</script>");
@@ -68,8 +74,65 @@ assert.match(source, /最新优先/);
 assert.match(source, /默认排序/);
 assert.match(source, /L4 · 稳定事实、偏好、边界和决策/);
 assert.match(source, /grid grid-cols-2 gap-2 sm:flex sm:flex-wrap/);
+assert.ok(source.includes(".bg-zinc-900\\/60 {"), "light mode must map merge picker cards to the shared panel color");
 assert.doesNotMatch(source, /typeCount\(type\) \+ '\/' \+ typeLimit\(type\)/);
 assert.match(source, /处理日期是梦境对应的聊天日期；实际运行是任务启动时间。/);
 assert.match(source, /'实际运行 ' \+ fmt\(run\.started_at\)/);
 
-console.log("ok: mobile memory toolbar, Chinese type labels, clear dream time labels, and reversible sorting");
+assert.equal(admin.candidateSourceLabel("dream_update"), "系统 · 更新建议");
+assert.equal(admin.memorySourceLabel("mcp"), "Elio 手写");
+assert.equal(admin.memorySourceLabel("manual"), "茉茉手动");
+
+admin.mergeTargets = [
+  { id: "mem_elio", type: "relationship", source: "mcp", authored_by: "以昼", content: "我们记得这件事" },
+  { id: "mem_system", type: "fact", source: "review", authored_by: null, content: "系统整理的项目事实" },
+];
+assert.equal(admin.selectedMergeTarget("mem_elio").authored_by, "以昼");
+assert.equal(admin.isProtectedMergeTarget("mem_elio"), true);
+assert.equal(admin.isProtectedMergeTarget("mem_system"), false);
+assert.equal(admin.candidateMergeOptions({ mergeQuery: "项目" })[0].id, "mem_system");
+assert.equal(admin.memoryMergeOptions({ id: "mem_system", mergeQuery: "" })[0].id, "mem_elio");
+
+admin.dreamStatus = {
+  raw_message_counts: [
+    { date_label: "2026-08-26", raw_messages: 342, processed_messages: 120, remaining_messages: 222 },
+    { date_label: "2026-08-25", raw_messages: 40, processed_messages: 40, remaining_messages: 0 },
+  ],
+};
+const progress = admin.dreamDayBars();
+assert.deepEqual(
+  Array.from(progress, (day) => ({ processed: day.processed, remaining: day.remaining, done: day.done })),
+  [
+    { processed: 120, remaining: 222, done: false },
+    { processed: 40, remaining: 0, done: true },
+  ],
+);
+assert.match(admin.dreamRunNote({ reason: "model_error", error: "status=500" }), /历史记录没有保存服务端错误正文/);
+
+assert.match(source, /目标记忆预览/);
+assert.match(source, /待归档记忆/);
+assert.match(source, /建议保留的重复记忆/);
+assert.match(source, /系统没有给出可唯一定位的保留对象/);
+assert.match(source, /一键合并到系统建议目标/);
+assert.match(source, /搜索记忆正文或类型/);
+assert.match(source, /亲笔保护/);
+assert.match(source, /未加亲笔保护/);
+assert.doesNotMatch(source, /未署名保护/);
+assert.match(source, /<select x-model="memory\.draft\.type"/);
+assert.match(source, /memory\.draft = \{ type: memory\.type, content: memory\.content \}/);
+assert.match(source, /type: nextType/);
+assert.match(source, /记忆已保存，并移到/);
+assert.match(source, /candidate\.source === 'dream_delete'.*candidate\.target_memory\.authored_by/);
+assert.doesNotMatch(source, /placeholder="目标 memory id"/);
+assert.doesNotMatch(source, /candidate\.target_memory\.tags/);
+assert.match(memoriesApi, /target_memory: row\.target_memory_id \? targets\.get/);
+assert.match(memoriesApi, /related_memories:/);
+assert.match(memoriesApi, /memoryIdReferences\(row\.decision_note\)/);
+assert.match(memoriesApi, /fetchMemoriesByIdPrefixes/);
+assert.ok((memoriesApi.match(/if \(target\.authored_by\)/g) || []).length >= 2, "delete and merge must both protect hand-authored targets");
+assert.match(dreamApi, /processed_messages: processedMessages/);
+assert.match(dreamApi, /remaining_messages: Math\.max/);
+assert.match(dreamExtract, /readModelErrorDetail\(response\)/);
+assert.match(indexSource, /backfill_skipped/);
+
+console.log("ok: memory review provenance, protected target picker, Dream progress/error details, and prior mobile UI");

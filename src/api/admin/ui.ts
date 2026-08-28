@@ -390,7 +390,35 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
             <template x-if="candidate.source === 'dream_update'">
               <p class="mb-2 text-xs text-amber-300/80">这是系统写出的新版本。选择“采用新版本”会让它接替下面的原记忆；原版本仍保留在历史链中。</p>
             </template>
-            <template x-if="candidate.target_memory">
+            <template x-if="candidate.source === 'dream_delete' && candidate.target_memory">
+              <div class="mb-3 space-y-2">
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div class="rounded-2xl border border-red-400/25 bg-[#0a0a0b] p-3">
+                    <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                      <span class="font-semibold text-red-200">待归档记忆</span>
+                      <span class="chip chip-dim" x-text="memorySourceLabel(candidate.target_memory.source)"></span>
+                      <span class="chip chip-warn" x-show="candidate.target_memory.authored_by" x-text="'亲笔保护 · ' + candidate.target_memory.authored_by"></span>
+                      <span class="chip chip-dim" x-show="candidate.target_memory.source === 'mcp' && !candidate.target_memory.authored_by">未加亲笔保护</span>
+                    </div>
+                    <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="candidate.target_memory.content"></p>
+                  </div>
+                  <template x-for="related in candidate.related_memories || []" :key="related.id">
+                    <div class="rounded-2xl border border-emerald-400/25 bg-[#0a0a0b] p-3">
+                      <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                        <span class="font-semibold text-emerald-200">建议保留的重复记忆</span>
+                        <span class="chip chip-dim" x-text="memorySourceLabel(related.source)"></span>
+                        <span class="chip chip-warn" x-show="related.authored_by" x-text="'亲笔保护 · ' + related.authored_by"></span>
+                        <span class="chip chip-dim" x-show="related.source === 'mcp' && !related.authored_by">未加亲笔保护</span>
+                      </div>
+                      <p class="whitespace-pre-wrap text-xs leading-6 text-zinc-300" x-text="related.content"></p>
+                    </div>
+                  </template>
+                </div>
+                <p x-show="!candidate.related_memories || candidate.related_memories.length === 0" class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs leading-6 text-amber-200/80">系统没有给出可唯一定位的保留对象，建议先选择“保留原记忆”。</p>
+                <p class="text-[11px] text-zinc-500" x-show="candidate.decision_note" x-text="candidate.decision_note"></p>
+              </div>
+            </template>
+            <template x-if="candidate.source !== 'dream_delete' && candidate.target_memory">
               <div class="mb-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
                 <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
                   <span class="font-semibold text-zinc-200">目标记忆预览</span>
@@ -402,7 +430,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <p class="mt-1 text-[11px] text-zinc-500" x-show="candidate.decision_note" x-text="candidate.decision_note"></p>
               </div>
             </template>
-            <template x-if="!candidate.editing">
+            <template x-if="!candidate.editing && (candidate.source !== 'dream_delete' || !candidate.target_memory)">
               <p class="whitespace-pre-wrap text-sm leading-7 text-zinc-100" x-text="candidate.content"></p>
             </template>
             <template x-if="candidate.editing">
@@ -433,8 +461,8 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               </button>
             </div>
             <div x-show="candidate.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
-              <button type="button" x-show="candidate.target_memory && !candidate.target_memory.authored_by" @click="mergeCandidate(candidate, candidate.target_memory.id)" class="tap w-full rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950">一键合并到系统建议目标</button>
-              <p x-show="candidate.target_memory && candidate.target_memory.authored_by" class="text-xs leading-6 text-amber-300/80">系统建议目标带有亲笔保护，审核队列不会覆盖它。若确实要改，请到“重要记忆”里亲手编辑。</p>
+              <button type="button" x-show="candidateSuggestedMergeTarget(candidate) && !candidateSuggestedMergeTarget(candidate).authored_by" @click="mergeCandidate(candidate, candidateSuggestedMergeTarget(candidate).id)" class="tap w-full rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950">一键合并到系统建议目标</button>
+              <p x-show="candidateSuggestedMergeTarget(candidate) && candidateSuggestedMergeTarget(candidate).authored_by" class="text-xs leading-6 text-amber-300/80">系统建议目标带有亲笔保护，审核队列不会覆盖它。若确实要改，请到“重要记忆”里亲手编辑。</p>
               <input x-model="candidate.mergeQuery" class="h-11 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-3 text-sm outline-none focus:border-coral" placeholder="搜索记忆正文或类型">
               <div class="max-h-64 space-y-2 overflow-y-auto">
                 <template x-for="target in candidateMergeOptions(candidate)" :key="target.id">
@@ -538,7 +566,20 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <p class="whitespace-pre-wrap text-sm leading-7 text-zinc-100" x-text="memory.content"></p>
               </template>
               <template x-if="memory.editing">
-                <textarea x-model="memory.draft.content" class="min-h-36 w-full resize-y rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3 text-sm outline-none focus:border-coral"></textarea>
+                <div class="space-y-3">
+                  <label class="block">
+                    <span class="text-xs text-zinc-400">记忆类型</span>
+                    <select x-model="memory.draft.type" class="mt-1 h-11 w-full rounded-2xl border border-zinc-800 bg-[#0a0a0b] px-3 text-sm outline-none focus:border-coral">
+                      <template x-for="type in canonicalMemoryTypes" :key="type">
+                        <option :value="type" x-text="memoryTypeLabel(type)"></option>
+                      </template>
+                    </select>
+                  </label>
+                  <label class="block">
+                    <span class="text-xs text-zinc-400">记忆正文</span>
+                    <textarea x-model="memory.draft.content" class="mt-1 min-h-36 w-full resize-y rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3 text-sm leading-7 outline-none focus:border-coral"></textarea>
+                  </label>
+                </div>
               </template>
               <div x-show="memory.supersedes_id || memory.superseded_by_id" class="mt-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3 text-xs leading-6 text-zinc-400">
                 <div x-show="memory.supersedes_id">取代了 <span class="text-zinc-100" x-text="memory.supersedes_id"></span></div>
@@ -1224,6 +1265,7 @@ function memoryAdmin() {
           item.mergeOpen = false;
           item.target_id = item.target_memory_id || '';
           item.mergeQuery = '';
+          item.related_memories = Array.isArray(item.related_memories) ? item.related_memories : [];
           item.draft = { content: item.content, type: item.type, fact_key: item.fact_key || '' };
           return item;
         });
@@ -1404,9 +1446,11 @@ function memoryAdmin() {
         this.notify('请先选择目标记忆');
         return;
       }
-      const target = candidate.target_memory && candidate.target_memory.id === targetId
-        ? candidate.target_memory
-        : this.selectedMergeTarget(targetId);
+      const target = this.candidateSuggestedMergeTarget(candidate)?.id === targetId
+        ? this.candidateSuggestedMergeTarget(candidate)
+        : candidate.target_memory && candidate.target_memory.id === targetId
+          ? candidate.target_memory
+          : this.selectedMergeTarget(targetId);
       if (target && target.authored_by) {
         this.notify('目标带有亲笔保护，请到重要记忆中亲手处理');
         return;
@@ -1425,9 +1469,14 @@ function memoryAdmin() {
         this.notify(error.message);
       }
     },
+    candidateSuggestedMergeTarget(candidate) {
+      if (!candidate) return null;
+      if (candidate.source === 'dream_delete') return (candidate.related_memories || [])[0] || null;
+      return candidate.target_memory || null;
+    },
     toggleMemoryEdit(memory) {
       memory.editing = !memory.editing;
-      memory.draft = { content: memory.content };
+      memory.draft = { type: memory.type, content: memory.content };
       this.icons();
     },
     openMemoryCreate() {
@@ -1479,21 +1528,24 @@ function memoryAdmin() {
       this.saving = false;
     },
     async saveMemory(memory) {
+      const previousType = memory.type;
+      const nextType = (memory.draft.type || memory.type || 'fact').trim() || 'fact';
       try {
         await this.request(this.withNamespace('/v1/memory/' + encodeURIComponent(memory.id)), {
           method: 'PATCH',
           body: JSON.stringify({
             namespace: this.namespace,
-            type: memory.type,
+            type: nextType,
             content: memory.draft.content,
             confidence: memory.confidence,
             importance: memory.importance,
             tags: memory.tags || []
           })
         });
+        if (this.memoryType !== 'all' && nextType !== previousType) this.memoryType = nextType;
         this.mergeTargetsLoaded = false;
         await this.loadMemories();
-        this.notify('记忆已保存');
+        this.notify(nextType === previousType ? '记忆已保存' : '记忆已保存，并移到“' + this.memoryTypeLabel(nextType) + '”');
       } catch (error) {
         this.notify(error.message);
       }
