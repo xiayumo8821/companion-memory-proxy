@@ -18,6 +18,9 @@ export interface Env {
   GUIDE_DOG_API_KEY?: string;
   CF_AIG_TOKEN?: string;
   ENABLE_AUTO_MEMORY?: string;
+  // Per-chat automatic memory context injection. "false" pauses boot + recall
+  // without disabling MCP memory tools, writes, dreams, or the v2 lifecycle.
+  MEMORY_AUTO_INJECT_ENABLED?: string;
   ENABLE_DREAM?: string;
   // --- Aelios 记忆库 v2 行为开关 ---
   // 默认走 v2；只有显式 false 才回退旧路径。
