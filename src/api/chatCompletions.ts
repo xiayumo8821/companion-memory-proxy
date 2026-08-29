@@ -58,6 +58,16 @@ export function hasToolRound(body: OpenAIChatRequest): boolean {
   return hasTools(body) || hasToolContent(body);
 }
 
+/**
+ * Narrow kill switch for per-chat memory injection.
+ *
+ * This deliberately does not reuse MEMORY_LIFECYCLE_ENABLED: turning the
+ * lifecycle off would also disable MCP v2 reads/writes and dream processing.
+ */
+export function isAutoMemoryInjectionEnabled(env: Env): boolean {
+  return env.MEMORY_AUTO_INJECT_ENABLED !== "false";
+}
+
 function recallHitToMemoryRecord(
   h: {
     id: string;
@@ -138,6 +148,7 @@ export async function handleChatCompletions(
 
   const namespace = auth.profile.namespace;
   const lastUserText = extractLastUserText(body.messages);
+  const autoMemoryInjectionEnabled = isAutoMemoryInjectionEnabled(env);
 
   // Two independent pre-upstream chains under one Promise.all:
   // A: conversation + save user messages (serial inside chain — save needs conversation.id)
@@ -158,7 +169,7 @@ export async function handleChatCompletions(
       return { conversation, savedUserMessageIds };
     })(),
     (async () => {
-      if (!isV2Enabled(env)) {
+      if (!isV2Enabled(env) || !autoMemoryInjectionEnabled) {
         return {
           boot: null as Awaited<ReturnType<typeof buildBootPackage>> | null,
           recallResult: null as Awaited<ReturnType<typeof runRecall>> | null
@@ -203,7 +214,7 @@ export async function handleChatCompletions(
   let cacheAnchorBlock: string | null = null;
   try {
     if (!isV2Enabled(env)) {
-      const ragMemories = lastUserText
+      const ragMemories = autoMemoryInjectionEnabled && lastUserText
         ? await searchMemories(env, {
             namespace,
             query: lastUserText,
