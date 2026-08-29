@@ -67,6 +67,18 @@ assert.equal(
   "second click must restore the author's original order",
 );
 
+admin.stats = { memory_type_counts: [] };
+admin.memoryType = "all";
+admin.memories = [
+  { id: "fact-1", type: "fact" },
+  { id: "fact-2", type: "fact" },
+  { id: "note-1", type: "note" },
+];
+admin.syncMemoryCountsFromLoadedRows();
+assert.equal(admin.typeCount("all"), 3, "loaded memories must restore the total when boot counts are missing");
+assert.equal(admin.typeCount("fact"), 2, "loaded memories must restore per-type counts when boot counts are missing");
+assert.equal(admin.typeCount("note"), 1, "fallback counts must keep canonical memory types");
+
 assert.match(source, /x-text="memoryTypeLabel\(memory\.type\)"/);
 assert.match(source, /x-text="memoryTypeLabel\(type\)"/);
 assert.match(source, /x-text="memoryTypeLabel\(candidate\.type\)"/);

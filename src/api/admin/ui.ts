@@ -1235,6 +1235,7 @@ function memoryAdmin() {
         tasks.push(this.loadDreamHarvest());
       }
       await Promise.all(tasks);
+      this.syncMemoryCountsFromLoadedRows();
       this.icons();
     },
     todayRange() {
@@ -1300,6 +1301,7 @@ function memoryAdmin() {
           return item;
         });
         this.applyMemorySort();
+        this.syncMemoryCountsFromLoadedRows();
       } catch (error) {
         this.notify(error.message);
       }
@@ -2108,6 +2110,22 @@ function memoryAdmin() {
         });
       }
       this.memories = rows;
+    },
+    syncMemoryCountsFromLoadedRows() {
+      if (this.memoryType !== 'all' || !this.memories.length) return;
+      const current = Array.isArray(this.stats.memory_type_counts) ? this.stats.memory_type_counts : [];
+      const currentTotal = current.reduce(function(sum, row) { return sum + Number(row.count || 0); }, 0);
+      if (currentTotal > 0) return;
+      const counts = {};
+      this.memories.forEach(function(memory) {
+        const type = memory && memory.type ? memory.type : 'note';
+        counts[type] = Number(counts[type] || 0) + 1;
+      });
+      this.stats = Object.assign({}, this.stats, {
+        memory_type_counts: Object.keys(counts).map(function(type) {
+          return { type: type, count: counts[type] };
+        })
+      });
     },
     typeCount(type) {
       const rows = this.stats.memory_type_counts || [];
