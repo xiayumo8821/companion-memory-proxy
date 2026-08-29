@@ -4,6 +4,10 @@ export const ADMIN_HTML = String.raw`<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aelios Memory</title>
+<meta name="theme-color" content="#f7f5fb">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=pacifico-1">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/aelios-192.png?v=pacifico-1">
+<link rel="manifest" href="/manifest.webmanifest?v=pacifico-1">
 <script>
 tailwind = {
   config: {

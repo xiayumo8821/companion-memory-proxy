@@ -1,11 +1,14 @@
 import {
+  handleAppleTouchIcon,
   handleAdmin,
+  handleAppIcon,
   handleDiaryAdmin,
   handleDiaryRewriteAdmin,
   handleMonthlyRollupAdmin,
   handleStarmap,
   handleWeeklyRollupAdmin,
-  handleWeeklyApproveAdmin
+  handleWeeklyApproveAdmin,
+  handleWebManifest
 } from "./api/admin";
 import { handleHealth } from "./api/health";
 import { handleCache } from "./api/cache";
@@ -84,6 +87,22 @@ async function runDailyMemoryDigestBatches(env: Env, namespace: string): Promise
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/apple-touch-icon.png") {
+      return handleAppleTouchIcon();
+    }
+
+    if (request.method === "GET" && url.pathname === "/icons/aelios-192.png") {
+      return handleAppIcon(192);
+    }
+
+    if (request.method === "GET" && url.pathname === "/icons/aelios-512.png") {
+      return handleAppIcon(512);
+    }
+
+    if (request.method === "GET" && url.pathname === "/manifest.webmanifest") {
+      return handleWebManifest();
+    }
 
     if (request.method === "GET" && (url.pathname === "/admin" || url.pathname === "/memory-admin")) {
       return handleAdmin();

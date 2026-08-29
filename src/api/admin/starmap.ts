@@ -10,6 +10,10 @@ export const STARMAP_HTML = String.raw`<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>记忆星图 · 两江交汇 — Aelios</title>
+<meta name="theme-color" content="#04050c">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=pacifico-1">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/aelios-192.png?v=pacifico-1">
+<link rel="manifest" href="/manifest.webmanifest?v=pacifico-1">
 <style>
   :root {
     color-scheme: dark;

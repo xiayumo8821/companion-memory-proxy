@@ -7,3 +7,4 @@ export {
   handleMonthlyRollupAdmin,
   handleStarmap
 } from "./admin/handlers";
+export { handleAppleTouchIcon, handleAppIcon, handleWebManifest } from "./admin/appIcon";
