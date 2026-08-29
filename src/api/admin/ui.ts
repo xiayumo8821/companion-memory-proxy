@@ -7,9 +7,9 @@ export const ADMIN_HTML = String.raw`<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aelios Memory</title>
 <meta name="theme-color" content="#f4f3f7">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=pacifico-1">
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/aelios-192.png?v=pacifico-1">
-<link rel="manifest" href="/manifest.webmanifest?v=pacifico-1">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=pacifico-2">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/aelios-192.png?v=pacifico-2">
+<link rel="manifest" href="/manifest.webmanifest?v=pacifico-2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Sans+SC:wght@300;400;500;600&amp;family=Noto+Serif+SC:wght@400;500;600&amp;family=Pacifico&amp;display=swap" rel="stylesheet">
@@ -460,16 +460,16 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
             </template>
             <div class="mt-4 grid grid-cols-2 gap-3 md:flex md:flex-wrap">
               <button type="button" @click="approveCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl bg-coral px-4 text-sm font-semibold text-zinc-950 transition duration-150 ease-in-out">
-                <i data-lucide="check" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? (candidate.target_memory && candidate.target_memory.status !== 'active' ? '关闭已处理提案' : '确认归档') : (candidate.source === 'dream_update' ? '采用新版本' : '通过')"></span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span x-text="candidate.source === 'dream_delete' ? (candidate.target_memory && candidate.target_memory.status !== 'active' ? '关闭已处理提案' : '确认归档') : (candidate.source === 'dream_update' ? '采用新版本' : '通过')"></span>
               </button>
               <button type="button" @click="discardCandidate(candidate)" class="tap inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral">
-                <i data-lucide="x" class="h-4 w-4"></i><span x-text="candidate.source === 'dream_delete' ? '保留原记忆' : '丢弃提案'"></span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg><span x-text="candidate.source === 'dream_delete' ? '保留原记忆' : '丢弃提案'"></span>
               </button>
               <button type="button" @click="toggleCandidateEdit(candidate)" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
-                <i data-lucide="pencil" class="h-4 w-4"></i><span x-text="candidate.editing ? '取消编辑' : '编辑后通过'"></span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span x-text="candidate.editing ? '取消编辑' : '编辑后通过'"></span>
               </button>
               <button type="button" @click="openCandidateMerge(candidate)" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
-                <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并</span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><path d="M6 21V9a9 9 0 0 0 9 9"></path></svg><span>合并</span>
               </button>
             </div>
             <div x-show="candidate.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
@@ -599,16 +599,16 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
               </div>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button type="button" @click="toggleMemoryEdit(memory)" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm transition duration-150 ease-in-out hover:border-coral">
-                  <i data-lucide="pencil" class="h-4 w-4"></i><span x-text="memory.editing ? '取消' : '编辑'"></span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span x-text="memory.editing ? '取消' : '编辑'"></span>
                 </button>
                 <button type="button" x-show="memory.editing" @click="saveMemory(memory)" class="tap inline-flex items-center gap-2 rounded-2xl bg-coral px-3 text-sm font-semibold text-zinc-950">
-                  <i data-lucide="save" class="h-4 w-4"></i><span>保存</span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg><span>保存</span>
                 </button>
                 <button type="button" @click="openMemoryMerge(memory)" class="tap inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm transition duration-150 ease-in-out hover:border-coral">
-                  <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并重复</span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><path d="M6 21V9a9 9 0 0 0 9 9"></path></svg><span>合并重复</span>
                 </button>
                 <button type="button" @click="deleteMemory(memory)" class="tap ml-auto inline-flex items-center gap-2 rounded-2xl border border-zinc-800 px-3 text-sm text-zinc-400 transition duration-150 ease-in-out hover:border-coral hover:text-zinc-100">
-                  <i data-lucide="trash-2" class="h-4 w-4"></i><span>删除</span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"></path></svg><span>删除</span>
                 </button>
               </div>
               <div x-show="memory.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
