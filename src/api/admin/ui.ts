@@ -1,13 +1,18 @@
+import { FOLIO_THEME_CSS } from "./folioTheme";
+
 export const ADMIN_HTML = String.raw`<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aelios Memory</title>
-<meta name="theme-color" content="#f7f5fb">
+<meta name="theme-color" content="#f4f3f7">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=pacifico-1">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/aelios-192.png?v=pacifico-1">
 <link rel="manifest" href="/manifest.webmanifest?v=pacifico-1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Sans+SC:wght@300;400;500;600&amp;family=Noto+Serif+SC:wght@400;500;600&amp;family=Pacifico&amp;display=swap" rel="stylesheet">
 <script>
 tailwind = {
   config: {
@@ -238,6 +243,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
       animation-iteration-count: 1 !important;
     }
   }
+  ${FOLIO_THEME_CSS}
 </style>
 </head>
 <body class="bg-[#0a0a0b] text-zinc-100 antialiased">
@@ -250,10 +256,10 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
      不再用 fixed bottom-0 对齐布局视口（地址栏未收起时会把栏顶出屏幕，#34）。
      md 起还原为整页 body 滚动，桌面行为不变。 -->
 <div x-data="memoryAdmin()" x-init="init()" x-cloak class="app-shell flex h-dvh flex-col md:block md:h-auto md:min-h-dvh">
-  <div class="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 overflow-y-auto md:min-h-dvh md:flex-none md:overflow-visible md:px-4 md:py-4">
-    <aside class="hidden w-64 shrink-0 flex-col gap-4 border-r border-zinc-800 px-3 py-3 md:flex">
+  <div class="aelios-shell-frame mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 overflow-y-auto md:min-h-dvh md:flex-none md:overflow-visible md:px-4 md:py-4">
+    <aside class="aelios-sidebar hidden w-64 shrink-0 flex-col gap-4 border-r border-zinc-800 px-3 py-3 md:flex">
       <div class="flex items-center gap-3 px-2 py-2">
-        <div class="grid h-9 w-9 place-items-center rounded-2xl bg-coral text-sm font-semibold text-zinc-950">A</div>
+        <div class="aelios-logo grid h-9 w-9 place-items-center rounded-2xl bg-coral text-sm font-semibold text-zinc-950">A</div>
         <div>
           <div class="text-sm font-semibold">Aelios</div>
           <div class="text-xs text-zinc-400">Memory Console</div>
@@ -294,10 +300,10 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
       </div>
     </aside>
 
-    <main class="min-w-0 flex-1 px-4 py-4 md:px-6">
-      <header class="mb-5 flex items-start justify-between gap-3 md:hidden">
+    <main class="aelios-content min-w-0 flex-1 px-4 py-4 md:px-6">
+      <header class="aelios-mobile-header mb-5 flex items-start justify-between gap-3 md:hidden">
         <div class="flex items-center gap-3">
-          <div class="grid h-10 w-10 place-items-center rounded-2xl bg-coral text-sm font-semibold text-zinc-950">A</div>
+          <div class="aelios-logo grid h-10 w-10 place-items-center rounded-2xl bg-coral text-sm font-semibold text-zinc-950">A</div>
           <div>
             <div class="text-base font-semibold">Aelios</div>
             <div class="text-xs text-zinc-400" x-text="subtitle()"></div>
@@ -463,7 +469,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
                 <i data-lucide="pencil" class="h-4 w-4"></i><span x-text="candidate.editing ? '取消编辑' : '编辑后通过'"></span>
               </button>
               <button type="button" @click="openCandidateMerge(candidate)" class="tap col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-800 px-4 text-sm text-zinc-100 transition duration-150 ease-in-out hover:border-coral md:col-span-1">
-                <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并到已有记忆</span>
+                <i data-lucide="git-merge" class="h-4 w-4"></i><span>合并</span>
               </button>
             </div>
             <div x-show="candidate.mergeOpen" class="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-[#0a0a0b] p-3">
@@ -1067,7 +1073,7 @@ document.documentElement.dataset.theme = localStorage.getItem('aelios.admin.colo
     </main>
   </div>
 
-  <nav class="z-40 shrink-0 border-t border-zinc-800 bg-[#0a0a0b]/95 px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
+  <nav class="aelios-bottom-nav z-40 shrink-0 border-t border-zinc-800 bg-[#0a0a0b]/95 px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
     <div class="grid grid-cols-8 gap-0.5">
       <button type="button" @click="go('today')" class="tap grid place-items-center rounded-2xl text-[10px] transition duration-150 ease-in-out" :class="page === 'today' ? 'bg-zinc-900 text-coral' : 'text-zinc-400'"><i data-lucide="sun" class="h-5 w-5"></i><span>今日</span></button>
       <button type="button" @click="go('diary')" class="tap grid place-items-center rounded-2xl text-[10px] transition duration-150 ease-in-out" :class="page === 'diary' ? 'bg-zinc-900 text-coral' : 'text-zinc-400'"><i data-lucide="book-open" class="h-5 w-5"></i><span>日记</span></button>
